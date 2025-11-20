@@ -1,0 +1,22 @@
+{
+  "name": "cyber-attack-map",
+  "version": "1.0.0",
+  "description": "Real-time global cyber attack visualization map",
+  "main": "index.html",
+  "scripts": {
+    "start": "python3 -m http.server 8000 || python -m http.server 8000",
+    "serve": "npx serve ."
+  },
+  "keywords": [
+    "cyber-attack",
+    "threat-intelligence",
+    "security",
+    "map",
+    "visualization"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {},
+  "devDependencies": {}
+}
+
