@@ -1,18 +1,18 @@
-# Cyber Attack Map 🛡️
+# Cyber Attack Map
 
 A real-time interactive web application that visualizes cyber attacks on a global world map. The app displays live threat intelligence with attack markers, statistics, and a live feed of security events.
 
 ## Features
 
-- 🌍 **Interactive World Map** - Built with Leaflet.js using OpenStreetMap
-- 🔴 **Real-time Attack Visualization** - Live attack markers with color-coded types
-- 📊 **Live Statistics** - Track active threats, affected countries, attack types, and real vs simulated threats
-- 🎯 **Attack Types** - Visualize malware, phishing, DDoS, ransomware, intrusion, and exploits
-- 🔌 **Real API Integration** - Uses Abuse.ch (Feodo Tracker, ThreatFox) for real threat intelligence
-- 🌐 **IP Geolocation** - Maps threat IPs to real-world locations using ip-api.com
-- 📱 **Responsive Design** - Works on desktop and mobile devices
-- 🎨 **Modern UI** - Dark theme with smooth animations
-- ⚠️ **Smart Fallback** - Gracefully falls back to simulated data if APIs are unavailable
+- **Interactive World Map** - Built with Leaflet.js using OpenStreetMap
+- **Real-time Attack Visualization** - Live attack markers with color-coded types
+- **Live Statistics** - Track active threats, affected countries, attack types, and real vs simulated threats
+- **Attack Types** - Visualize malware, phishing, DDoS, ransomware, intrusion, and exploits
+- **Real API Integration** - Uses Abuse.ch (Feodo Tracker, ThreatFox) for real threat intelligence
+- **IP Geolocation** - Maps threat IPs to real-world locations using ip-api.com
+- **Responsive Design** - Works on desktop and mobile devices
+- **Modern UI** - Dark theme with smooth animations
+- **Smart Fallback** - Gracefully falls back to simulated data if APIs are unavailable
 
 ## Quick Start
 
@@ -63,12 +63,12 @@ npm run serve
 
 ## Attack Types
 
-- 🔴 **Malware** - Malicious software attacks
-- 🟠 **Phishing** - Social engineering attacks
-- 🟡 **DDoS** - Distributed Denial of Service attacks
-- 🟢 **Ransomware** - Encryption-based attacks
-- 🔵 **Intrusion** - Unauthorized access attempts
-- 🟣 **Exploit** - Vulnerability exploitation attacks
+- **Malware** - Malicious software attacks
+- **Phishing** - Social engineering attacks
+- **DDoS** - Distributed Denial of Service attacks
+- **Ransomware** - Encryption-based attacks
+- **Intrusion** - Unauthorized access attempts
+- **Exploit** - Vulnerability exploitation attacks
 
 ## Controls
 
@@ -87,7 +87,7 @@ You can customize the app by:
 
 ## Future Enhancements
 
-- ✅ Integration with real threat intelligence APIs (Done!)
+- Integration with real threat intelligence APIs (Done!)
 - WebSocket support for true real-time updates
 - Historical attack analysis
 - Geographic heat maps

@@ -3,13 +3,13 @@ const map = L.map('map').setView([20, 0], 2);
 
 // Add OpenStreetMap tiles
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '© OpenStreetMap contributors',
+    attribution: '(c) OpenStreetMap contributors',
     maxZoom: 19,
 }).addTo(map);
 
 // Dark theme tile layer (alternative)
 // L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-//     attribution: '© OpenStreetMap contributors © CARTO',
+//     attribution: '(c) OpenStreetMap contributors (c) CARTO',
 //     subdomains: 'abcd',
 //     maxZoom: 19
 // }).addTo(map);
@@ -255,8 +255,8 @@ async function getIPGeolocation(ip) {
                 geolocationCache.set(ip, geoData);
                 setTimeout(() => geolocationCache.delete(ip), 3600000);
                 // Log successful API (only occasionally to avoid spam)
-                if (Math.random() < 0.1) { // 10% chance to log
-                    console.log(`✓ Geolocated ${ip} using ${apiNames[i]}`);
+                if (Math.random() < 0.1) {
+                    console.log(`Geolocated ${ip} using ${apiNames[i]}`);
                 }
                 return geoData;
             }
@@ -294,7 +294,7 @@ async function fetchFeodoTrackerData() {
         }
         
         if (data && Array.isArray(data)) {
-            updateAPIStatus('✅ Connected to Feodo Tracker (Abuse.ch)', true);
+            updateAPIStatus('Connected to Feodo Tracker (Abuse.ch)', true);
             return data
                 .filter(item => item.ip_address)
                 .slice(0, 20) // Limit to 20 most recent
@@ -345,7 +345,7 @@ async function fetchFeodoTrackerTextFormat() {
         }
         
         if (ips.length > 0) {
-            updateAPIStatus('✅ Connected to Feodo Tracker (Abuse.ch)', true);
+            updateAPIStatus('Connected to Feodo Tracker (Abuse.ch)', true);
             return ips;
         }
     } catch (error) {
@@ -368,7 +368,7 @@ async function fetchThreatFoxData() {
         }
         
         if (data && data.query_status === 'ok' && Array.isArray(data.data)) {
-            updateAPIStatus('✅ Connected to ThreatFox (Abuse.ch)', true);
+            updateAPIStatus('Connected to ThreatFox (Abuse.ch)', true);
             const threats = [];
             for (const item of data.data.slice(0, 15)) {
                 const ip = extractIP(item.ioc || item.malware || '');
@@ -511,11 +511,11 @@ function createMarker(attack) {
     // Build popup content
     let popupContent = `
         <div style="color: #333; font-family: Arial, sans-serif;">
-            <strong>🚨 ${attack.type.toUpperCase()}</strong>
+            <strong>${attack.type.toUpperCase()}</strong>
             ${attack.isReal ? ' <span style="color: #ff0000; font-size: 0.8em;">[REAL]</span>' : ''}
             <br>
             <strong>Location:</strong> ${attack.city}, ${attack.country}<br>
-            <strong>Severity:</strong> ${'⭐'.repeat(attack.severity)}<br>
+            <strong>Severity:</strong> ${'*'.repeat(attack.severity)}<br>
             <strong>Source IP:</strong> ${attack.sourceIP}<br>
     `;
     
@@ -635,7 +635,7 @@ function addToFeed(attack) {
         <div class="time">${timeStr}</div>
         <div class="description">
             <strong>${attack.type.toUpperCase()}</strong>${realBadge} detected in ${attack.city}, ${attack.country}
-            <br>Severity: ${'⭐'.repeat(attack.severity)}
+            <br>Severity: ${'*'.repeat(attack.severity)}
     `;
     
     if (attack.malware) {
@@ -716,7 +716,7 @@ function clearMap() {
     updateStats();
     
     // Update status
-    updateAPIStatus('🗺️ Map cleared. Fetching new data...', true);
+    updateAPIStatus('Map cleared. Fetching new data...', true);
     
     // Optionally trigger a new fetch if playing
     if (isPlaying) {
@@ -743,7 +743,7 @@ async function updateAttacks() {
     lastUpdateTime = now;
     
     // Show loading status
-    updateAPIStatus('🔄 Fetching threat data...', true);
+    updateAPIStatus('Fetching threat data...', true);
     
     try {
         // Fetch real threat data from multiple sources
@@ -768,7 +768,7 @@ async function updateAttacks() {
         const allThreats = [...feodoResults, ...threatFoxResults];
         
         if (allThreats.length > 0) {
-            updateAPIStatus('🔄 Geolocating threat IPs...', true);
+            updateAPIStatus('Geolocating threat IPs...', true);
             
             // Process threats (limit concurrent geolocation requests)
             // Reduced to 5 per update to be safe with rate limits
@@ -786,22 +786,22 @@ async function updateAttacks() {
             }
             
             if (processedCount > 0) {
-                updateAPIStatus(`✅ Loaded ${processedCount} real threats`, true);
+                updateAPIStatus(`Loaded ${processedCount} real threats`, true);
             } else {
                 // If no attacks were geolocated, add a fallback
-                updateAPIStatus('⚠️ Using simulated data (geolocation failed)', false);
+                updateAPIStatus('Using simulated data (geolocation failed)', false);
                 const fallback = generateFallbackAttack();
                 addAttack(fallback);
             }
         } else {
             // Fallback to simulated if no data available
-            updateAPIStatus('⚠️ Using simulated data (no API data available). Check console for details.', false);
+            updateAPIStatus('Using simulated data (no API data available). Check console for details.', false);
             const fallback = generateFallbackAttack();
             addAttack(fallback);
         }
     } catch (error) {
         console.error('Error fetching threat data:', error);
-        updateAPIStatus('⚠️ Using simulated data (error occurred). Check console for details.', false);
+        updateAPIStatus('Using simulated data (error occurred). Check console for details.', false);
         // Fallback to simulated attack
         const fallback = generateFallbackAttack();
         addAttack(fallback);
@@ -812,7 +812,7 @@ async function updateAttacks() {
 document.getElementById('playPauseBtn').addEventListener('click', () => {
     isPlaying = !isPlaying;
     const btn = document.getElementById('playPauseBtn');
-    btn.textContent = isPlaying ? '⏸ Pause' : '▶ Play';
+    btn.textContent = isPlaying ? 'Pause' : 'Play';
     if (isPlaying) {
         updateAttacks();
     }
