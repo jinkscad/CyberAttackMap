@@ -41,16 +41,74 @@ const API = {
 // GLOBE INITIALIZATION
 // ============================================
 
+// Major world cities for labels
+const MAJOR_CITIES = [
+    // North America
+    { name: 'New York', lat: 40.7128, lng: -74.0060 },
+    { name: 'Los Angeles', lat: 34.0522, lng: -118.2437 },
+    { name: 'Chicago', lat: 41.8781, lng: -87.6298 },
+    { name: 'Houston', lat: 29.7604, lng: -95.3698 },
+    { name: 'Phoenix', lat: 33.4484, lng: -112.0740 },
+    { name: 'Dallas', lat: 32.7767, lng: -96.7970 },
+    { name: 'San Francisco', lat: 37.7749, lng: -122.4194 },
+    { name: 'Seattle', lat: 47.6062, lng: -122.3321 },
+    { name: 'Denver', lat: 39.7392, lng: -104.9903 },
+    { name: 'Atlanta', lat: 33.7490, lng: -84.3880 },
+    { name: 'Miami', lat: 25.7617, lng: -80.1918 },
+    { name: 'Boston', lat: 42.3601, lng: -71.0589 },
+    { name: 'Washington DC', lat: 38.9072, lng: -77.0369 },
+    { name: 'Las Vegas', lat: 36.1699, lng: -115.1398 },
+    { name: 'Toronto', lat: 43.6532, lng: -79.3832 },
+    { name: 'Vancouver', lat: 49.2827, lng: -123.1207 },
+    { name: 'Montreal', lat: 45.5017, lng: -73.5673 },
+    { name: 'Mexico City', lat: 19.4326, lng: -99.1332 },
+    // Europe
+    { name: 'London', lat: 51.5074, lng: -0.1278 },
+    { name: 'Paris', lat: 48.8566, lng: 2.3522 },
+    { name: 'Berlin', lat: 52.5200, lng: 13.4050 },
+    { name: 'Moscow', lat: 55.7558, lng: 37.6173 },
+    { name: 'Amsterdam', lat: 52.3676, lng: 4.9041 },
+    { name: 'Frankfurt', lat: 50.1109, lng: 8.6821 },
+    { name: 'Madrid', lat: 40.4168, lng: -3.7038 },
+    { name: 'Rome', lat: 41.9028, lng: 12.4964 },
+    { name: 'Istanbul', lat: 41.0082, lng: 28.9784 },
+    // Asia
+    { name: 'Tokyo', lat: 35.6762, lng: 139.6503 },
+    { name: 'Beijing', lat: 39.9042, lng: 116.4074 },
+    { name: 'Shanghai', lat: 31.2304, lng: 121.4737 },
+    { name: 'Seoul', lat: 37.5665, lng: 126.9780 },
+    { name: 'Hong Kong', lat: 22.3193, lng: 114.1694 },
+    { name: 'Singapore', lat: 1.3521, lng: 103.8198 },
+    { name: 'Dubai', lat: 25.2048, lng: 55.2708 },
+    { name: 'Mumbai', lat: 19.0760, lng: 72.8777 },
+    { name: 'Bangkok', lat: 13.7563, lng: 100.5018 },
+    { name: 'Jakarta', lat: -6.2088, lng: 106.8456 },
+    // Other
+    { name: 'Sydney', lat: -33.8688, lng: 151.2093 },
+    { name: 'Sao Paulo', lat: -23.5505, lng: -46.6333 },
+    { name: 'Cairo', lat: 30.0444, lng: 31.2357 },
+    { name: 'Lagos', lat: 6.5244, lng: 3.3792 },
+    { name: 'Johannesburg', lat: -26.2041, lng: 28.0473 },
+];
+
 function initGlobe() {
     const container = document.getElementById('globe');
 
     globe = Globe()
-        .globeImageUrl('//unpkg.com/three-globe/example/img/earth-blue-marble.jpg')
+        // Night earth with city lights
+        .globeImageUrl('//unpkg.com/three-globe/example/img/earth-night.jpg')
         .bumpImageUrl('//unpkg.com/three-globe/example/img/earth-topology.png')
         .backgroundImageUrl('//unpkg.com/three-globe/example/img/night-sky.png')
         .showAtmosphere(true)
-        .atmosphereColor('#3b82f6')
-        .atmosphereAltitude(0.2)
+        .atmosphereColor('#4f46e5')
+        .atmosphereAltitude(0.15)
+        // Country polygons with borders
+        .polygonsData([])
+        .polygonCapColor(() => 'rgba(30, 30, 60, 0.3)')
+        .polygonSideColor(() => 'rgba(100, 100, 255, 0.1)')
+        .polygonStrokeColor(() => 'rgba(100, 150, 255, 0.6)')
+        .polygonAltitude(0.006)
+        // Threat points
         .htmlElementsData([])
         .htmlElement(d => {
             const el = document.createElement('div');
@@ -65,6 +123,7 @@ function initGlobe() {
             return el;
         })
         .htmlAltitude(0.01)
+        // Ring animations
         .ringsData([])
         .ringColor(() => t => `rgba(239, 68, 68, ${1 - t})`)
         .ringMaxRadius(4)
@@ -75,6 +134,7 @@ function initGlobe() {
     globe.pointOfView({ lat: 30, lng: 0, altitude: 2.2 });
     globe.controls().autoRotate = true;
     globe.controls().autoRotateSpeed = 0.4;
+    globe.controls().minDistance = 120; // Allow closer zoom
 
     const resize = () => {
         globe.width(container.clientWidth);
@@ -424,8 +484,39 @@ async function init() {
     setupControls();
     document.getElementById('toggleRotation').classList.add('active');
 
+    // Load country borders
+    try {
+        const countriesRes = await fetch('https://unpkg.com/world-atlas@2/countries-110m.json');
+        const countriesData = await countriesRes.json();
+        const countries = topojson.feature(countriesData, countriesData.objects.countries).features;
+        globe.polygonsData(countries);
+        console.log('Country borders loaded');
+    } catch (e) {
+        console.log('Could not load country borders:', e);
+    }
+
     console.log('Starting data fetch...');
     await fetchAllData();
+
+    // Live updates every 2 minutes
+    setInterval(async () => {
+        console.log('=== Refreshing data ===');
+
+        // Clear old data
+        threatPoints.length = 0;
+        attackerPoints.length = 0;
+        totalInfra = 0;
+        totalAttackers = 0;
+        totalReports = 0;
+        countryStats.clear();
+
+        // Clear feed
+        const feedList = document.getElementById('feedList');
+        feedList.innerHTML = '<div class="feed-empty">Refreshing...</div>';
+
+        // Fetch fresh data
+        await fetchAllData();
+    }, API.UPDATE_INTERVAL);
 }
 
 document.addEventListener('DOMContentLoaded', init);

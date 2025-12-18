@@ -4,12 +4,14 @@ A real-time 3D globe visualization of cyber threats using real threat intelligen
 
 ## Features
 
-- **3D Interactive Globe** - Beautiful Earth visualization with atmosphere effects, built with Globe.gl and Three.js
+- **3D Interactive Globe** - Night earth visualization showing city lights, with atmosphere effects, built with Globe.gl and Three.js
 - **Real Threat Data Only** - No fake or simulated data
   - **Threat Infrastructure** (Red) - C2 servers and malware hosts from Abuse.ch
   - **Active Attackers** (Orange) - Top attacking IPs from SANS DShield honeypot network
 - **Live Statistics** - Track threat infrastructure, active attackers, affected countries, and report counts
 - **Live Feed** - Real-time feed of threats as they're loaded with IP addresses and locations
+- **Country Borders** - Visible country outlines for better geographic context
+- **About Page** - Comprehensive glossary explaining all terminology (C2, malware infrastructure, active attackers, etc.)
 - **Premium UI** - Dark theme with glassmorphism panels, Inter + JetBrains Mono fonts
 
 ## Data Sources
@@ -32,12 +34,12 @@ cd CyberAttackMap
 
 2. Start a local server:
 ```bash
-python3 -m http.server 8080
+python3 -m http.server 8000
 ```
 
 3. Open your browser:
 ```
-http://localhost:8080
+http://localhost:8000
 ```
 
 ## How It Works
@@ -62,6 +64,7 @@ These are IP addresses that have been observed attacking honeypot sensors in the
 - **Scroll** - Zoom in/out
 - **Rotation button** - Toggle auto-rotation
 - **Reset button** - Return to default view
+- **About button** - View glossary and documentation
 
 ## Technology Stack
 

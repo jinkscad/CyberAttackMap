@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>About - Global Threat Intelligence</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        body {
+            overflow-y: auto;
+            background: var(--bg-dark);
+        }
+
+        .about-page {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px 24px 80px;
+        }
+
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 14px;
+            margin-bottom: 32px;
+            transition: color 0.2s;
+        }
+
+        .back-link:hover {
+            color: var(--text-primary);
+        }
+
+        .back-link svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        .about-header {
+            margin-bottom: 48px;
+        }
+
+        .about-header h1 {
+            font-size: 32px;
+            font-weight: 500;
+            margin-bottom: 12px;
+            letter-spacing: -0.02em;
+        }
+
+        .about-header p {
+            font-size: 16px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        .section {
+            margin-bottom: 48px;
+        }
+
+        .section h2 {
+            font-size: 20px;
+            font-weight: 500;
+            margin-bottom: 20px;
+            color: var(--text-primary);
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .section p {
+            font-size: 15px;
+            line-height: 1.7;
+            color: var(--text-secondary);
+            margin-bottom: 16px;
+        }
+
+        .section p:last-child {
+            margin-bottom: 0;
+        }
+
+        .term-list {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .term-item {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
+        }
+
+        .term-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .term-header h3 {
+            font-size: 16px;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .term-item p {
+            font-size: 14px;
+            line-height: 1.7;
+            color: var(--text-secondary);
+            margin-bottom: 12px;
+        }
+
+        .term-item p:last-child {
+            margin-bottom: 0;
+        }
+
+        .term-item strong {
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+
+        .source-list {
+            display: grid;
+            gap: 16px;
+        }
+
+        .source-item {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px 24px;
+        }
+
+        .source-item h3 {
+            font-size: 15px;
+            font-weight: 500;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .source-item p {
+            font-size: 14px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            margin: 0;
+        }
+
+        .source-item a {
+            color: var(--accent-blue);
+            text-decoration: none;
+        }
+
+        .source-item a:hover {
+            text-decoration: underline;
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 16px;
+        }
+
+        .feature-item {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .feature-item h3 {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .feature-item p {
+            font-size: 13px;
+            color: var(--text-secondary);
+            line-height: 1.5;
+            margin: 0;
+        }
+
+        .disclaimer {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            border-radius: 12px;
+            padding: 20px 24px;
+            margin-top: 48px;
+        }
+
+        .disclaimer h3 {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--accent-red);
+            margin-bottom: 8px;
+        }
+
+        .disclaimer p {
+            font-size: 13px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            margin: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="about-page">
+        <a href="index.html" class="back-link">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M19 12H5M12 19l-7-7 7-7"/>
+            </svg>
+            Back to Map
+        </a>
+
+        <header class="about-header">
+            <h1>Global Threat Intelligence</h1>
+            <p>A real-time visualization of global cyber threats, showing active malware infrastructure and attacking IP addresses from verified threat intelligence sources.</p>
+        </header>
+
+        <section class="section">
+            <h2>What is this?</h2>
+            <p>This application displays a 3D globe visualization of real-world cyber threats detected across the internet. Unlike simulated security dashboards, all data shown here comes from actual threat intelligence feeds that track malicious infrastructure and attack activity worldwide.</p>
+            <p>The map helps security professionals, researchers, and curious users understand the global distribution of cyber threats and see which regions are most active in terms of malicious infrastructure and attack origins.</p>
+        </section>
+
+        <section class="section">
+            <h2>Terminology</h2>
+            <div class="term-list">
+                <div class="term-item">
+                    <div class="term-header">
+                        <span class="legend-dot infra"></span>
+                        <h3>C2 / Malware Infrastructure</h3>
+                    </div>
+                    <p><strong>Command and Control (C2) servers</strong> are remote systems that cybercriminals use to communicate with and control compromised computers (often called "bots" or "zombies"). When malware infects a computer, it typically "phones home" to a C2 server to receive instructions, download additional malware, or exfiltrate stolen data.</p>
+                    <p><strong>Malware Infrastructure</strong> broadly refers to all the servers and systems used to support cyber attacks. This includes servers hosting malicious downloads, phishing websites, exploit kits, and distribution networks for malware.</p>
+                    <p>On this map, red dots represent known malicious infrastructure reported by security researchers and automated threat detection systems.</p>
+                </div>
+
+                <div class="term-item">
+                    <div class="term-header">
+                        <span class="legend-dot attacker"></span>
+                        <h3>Active Attacker</h3>
+                    </div>
+                    <p>These are IP addresses that have been observed actively conducting malicious activities such as:</p>
+                    <p><strong>Port scanning</strong> - Probing networks to find vulnerable services<br>
+                    <strong>Brute-force attacks</strong> - Attempting to guess passwords through repeated login attempts<br>
+                    <strong>Exploitation attempts</strong> - Trying to exploit known vulnerabilities in software</p>
+                    <p>On this map, orange dots represent IPs that have been reported attacking multiple systems within the last 24 hours. The attack count shown indicates how many malicious connection attempts were observed from each IP.</p>
+                </div>
+
+                <div class="term-item">
+                    <div class="term-header">
+                        <h3>Threat Infrastructure vs Active Attackers</h3>
+                    </div>
+                    <p><strong>Threat Infrastructure (red)</strong> represents the "supply side" of cybercrime - the servers and systems criminals have set up to conduct attacks, host malware, or control botnets.</p>
+                    <p><strong>Active Attackers (orange)</strong> represents the "demand side" - systems actively probing and attacking targets right now. These could be compromised machines in a botnet, or systems directly controlled by attackers.</p>
+                </div>
+
+                <div class="term-item">
+                    <div class="term-header">
+                        <h3>Additional Terms</h3>
+                    </div>
+                    <p><strong>Botnet</strong> - A network of compromised computers controlled by an attacker, often used for spam, DDoS attacks, or cryptocurrency mining.</p>
+                    <p><strong>IOC (Indicator of Compromise)</strong> - Technical evidence that a system has been breached, such as malicious IP addresses, file hashes, or domain names.</p>
+                    <p><strong>Threat Feed</strong> - A continuous stream of threat intelligence data from security researchers and automated systems.</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="section">
+            <h2>Data Sources</h2>
+            <div class="source-list">
+                <div class="source-item">
+                    <h3>Abuse.ch Feodo Tracker</h3>
+                    <p>Tracks botnet C2 servers associated with banking trojans like Dridex, Emotet, and TrickBot. These are some of the most dangerous malware families used for financial fraud.</p>
+                    <p><a href="https://feodotracker.abuse.ch/" target="_blank">feodotracker.abuse.ch</a></p>
+                </div>
+                <div class="source-item">
+                    <h3>Abuse.ch ThreatFox</h3>
+                    <p>A community-driven platform for sharing IOCs (Indicators of Compromise) including malicious IPs, domains, and file hashes associated with malware campaigns.</p>
+                    <p><a href="https://threatfox.abuse.ch/" target="_blank">threatfox.abuse.ch</a></p>
+                </div>
+                <div class="source-item">
+                    <h3>SANS Internet Storm Center (DShield)</h3>
+                    <p>A distributed sensor network where volunteers share firewall and intrusion detection logs. This data identifies the most active attacking IPs across the internet.</p>
+                    <p><a href="https://isc.sans.edu/" target="_blank">isc.sans.edu</a></p>
+                </div>
+            </div>
+        </section>
+
+        <section class="section">
+            <h2>Features</h2>
+            <div class="feature-grid">
+                <div class="feature-item">
+                    <h3>Real-Time Data</h3>
+                    <p>Data refreshes every 2 minutes from live threat intelligence feeds.</p>
+                </div>
+                <div class="feature-item">
+                    <h3>3D Globe Visualization</h3>
+                    <p>Interactive globe showing geographic distribution of threats worldwide.</p>
+                </div>
+                <div class="feature-item">
+                    <h3>Live Threat Feed</h3>
+                    <p>Scrolling feed showing the latest threats as they're detected.</p>
+                </div>
+                <div class="feature-item">
+                    <h3>Country Statistics</h3>
+                    <p>Breakdown of which countries host the most threat infrastructure.</p>
+                </div>
+            </div>
+        </section>
+
+        <div class="disclaimer">
+            <h3>Disclaimer</h3>
+            <p>This tool is for educational and research purposes only. The data shown represents a sample of known threats and is not comprehensive. IP addresses can be spoofed, compromised devices may belong to innocent users, and geolocation is approximate. Do not use this data to make accusations or take action against specific IP addresses without proper investigation.</p>
+        </div>
+    </div>
+</body>
+</html>
