@@ -3,93 +3,111 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cyber Attack Map - Live Global Threat Intelligence</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <title>Global Threat Intelligence</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>Cyber Attack Map</h1>
-            <p class="subtitle">Real-time Global Threat Intelligence</p>
-            <p class="data-source">Data sources: Abuse.ch (Feodo Tracker, ThreatFox) - ip-api.com for geolocation</p>
-            <div class="stats">
-                <div class="stat-item">
-                    <span class="stat-label">Active Threats:</span>
-                    <span class="stat-value" id="activeThreats">0</span>
+    <div class="app">
+        <!-- Globe -->
+        <div id="globe"></div>
+
+        <!-- Header Overlay -->
+        <header class="header">
+            <div class="brand">
+                <div class="brand-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <circle cx="12" cy="12" r="10"/>
+                        <path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+                    </svg>
                 </div>
-                <div class="stat-item">
-                    <span class="stat-label">Countries Affected:</span>
-                    <span class="stat-value" id="countriesAffected">0</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">Attack Types:</span>
-                    <span class="stat-value" id="attackTypes">0</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">Real Threats:</span>
-                    <span class="stat-value" id="realThreats">0</span>
+                <div class="brand-text">
+                    <h1>Global Threat Intelligence</h1>
+                    <span class="brand-sub">Real-time threat monitoring</span>
                 </div>
             </div>
-            <div id="apiStatus" class="api-status">
-                <span id="statusText">Loading threat data...</span>
+            <div class="connection-status">
+                <span class="status-dot" id="statusDot"></span>
+                <span class="status-text" id="statusText">Initializing...</span>
             </div>
         </header>
 
-        <div class="controls">
-            <button id="playPauseBtn" class="btn btn-primary">Pause</button>
-            <button id="clearBtn" class="btn btn-secondary">Clear Map</button>
-            <select id="attackTypeFilter" class="filter-select">
-                <option value="all">All Attack Types</option>
-                <option value="malware">Malware</option>
-                <option value="phishing">Phishing</option>
-                <option value="ddos">DDoS</option>
-                <option value="ransomware">Ransomware</option>
-                <option value="intrusion">Intrusion</option>
-                <option value="exploit">Exploit</option>
-            </select>
-        </div>
-
-        <div id="map"></div>
-
-        <div class="legend">
-            <h3>Attack Types</h3>
-            <div class="legend-items">
-                <div class="legend-item">
-                    <span class="legend-color" style="background: #ff4444;"></span>
-                    <span>Malware</span>
-                </div>
-                <div class="legend-item">
-                    <span class="legend-color" style="background: #ff8800;"></span>
-                    <span>Phishing</span>
-                </div>
-                <div class="legend-item">
-                    <span class="legend-color" style="background: #ffdd00;"></span>
-                    <span>DDoS</span>
-                </div>
-                <div class="legend-item">
-                    <span class="legend-color" style="background: #00ff88;"></span>
-                    <span>Ransomware</span>
-                </div>
-                <div class="legend-item">
-                    <span class="legend-color" style="background: #0088ff;"></span>
-                    <span>Intrusion</span>
-                </div>
-                <div class="legend-item">
-                    <span class="legend-color" style="background: #8800ff;"></span>
-                    <span>Exploit</span>
-                </div>
+        <!-- Stats Bar -->
+        <div class="stats-bar">
+            <div class="stat">
+                <span class="stat-value" id="threatInfraCount">0</span>
+                <span class="stat-label">Threat Infrastructure</span>
+            </div>
+            <div class="stat">
+                <span class="stat-value" id="activeAttackers">0</span>
+                <span class="stat-label">Active Attackers</span>
+            </div>
+            <div class="stat">
+                <span class="stat-value" id="countriesCount">0</span>
+                <span class="stat-label">Countries</span>
+            </div>
+            <div class="stat">
+                <span class="stat-value" id="lastHourAttacks">0</span>
+                <span class="stat-label">Reports (24h)</span>
             </div>
         </div>
 
-        <div class="attack-feed" id="attackFeed">
-            <h3>Recent Attacks</h3>
-            <div id="feedContent"></div>
+        <!-- Side Panel -->
+        <aside class="side-panel">
+            <div class="panel-section">
+                <h2>Live Threat Feed</h2>
+                <div class="feed-list" id="feedList">
+                    <div class="feed-empty">Connecting to threat feeds...</div>
+                </div>
+            </div>
+
+            <div class="panel-section">
+                <h2>Legend</h2>
+                <div class="legend">
+                    <div class="legend-item">
+                        <span class="legend-dot infra"></span>
+                        <span>C2 / Malware Infrastructure</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-dot attacker"></span>
+                        <span>Active Attacker</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel-section">
+                <h2>Top Source Countries</h2>
+                <div class="country-list" id="countryList"></div>
+            </div>
+        </aside>
+
+        <!-- Controls -->
+        <div class="controls">
+            <button class="control-btn" id="toggleRotation" title="Toggle rotation">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M23 4v6h-6M1 20v-6h6"/>
+                    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+                </svg>
+            </button>
+            <button class="control-btn" id="resetView" title="Reset view">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <circle cx="12" cy="12" r="3"/>
+                </svg>
+            </button>
         </div>
+
+        <!-- Data Attribution -->
+        <footer class="footer">
+            <span>Data: Abuse.ch &bull; SANS DShield</span>
+            <span id="updateTime">--</span>
+        </footer>
     </div>
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
+    <script src="https://unpkg.com/globe.gl@2.27.0/dist/globe.gl.min.js"></script>
     <script src="app.js"></script>
 </body>
 </html>
-

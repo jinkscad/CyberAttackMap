@@ -1,22 +1,29 @@
-# Cyber Attack Map
+# Global Threat Intelligence
 
-A real-time interactive web application that visualizes cyber attacks on a global world map. The app displays live threat intelligence with attack markers, statistics, and a live feed of security events.
+A real-time 3D globe visualization of cyber threats using real threat intelligence data. No simulations - only real data from security research organizations.
 
 ## Features
 
-- **Interactive World Map** - Built with Leaflet.js using OpenStreetMap
-- **Real-time Attack Visualization** - Live attack markers with color-coded types
-- **Live Statistics** - Track active threats, affected countries, attack types, and real vs simulated threats
-- **Attack Types** - Visualize malware, phishing, DDoS, ransomware, intrusion, and exploits
-- **Real API Integration** - Uses Abuse.ch (Feodo Tracker, ThreatFox) for real threat intelligence
-- **IP Geolocation** - Maps threat IPs to real-world locations using ip-api.com
-- **Responsive Design** - Works on desktop and mobile devices
-- **Modern UI** - Dark theme with smooth animations
-- **Smart Fallback** - Gracefully falls back to simulated data if APIs are unavailable
+- **3D Interactive Globe** - Beautiful Earth visualization with atmosphere effects, built with Globe.gl and Three.js
+- **Real Threat Data Only** - No fake or simulated data
+  - **Threat Infrastructure** (Red) - C2 servers and malware hosts from Abuse.ch
+  - **Active Attackers** (Orange) - Top attacking IPs from SANS DShield honeypot network
+- **Live Statistics** - Track threat infrastructure, active attackers, affected countries, and report counts
+- **Live Feed** - Real-time feed of threats as they're loaded with IP addresses and locations
+- **Premium UI** - Dark theme with glassmorphism panels, Inter + JetBrains Mono fonts
+
+## Data Sources
+
+All data comes from legitimate security research organizations:
+
+| Source | Type | Data Provided |
+|--------|------|---------------|
+| [Abuse.ch Feodo Tracker](https://feodotracker.abuse.ch/) | Threat Infrastructure | Botnet C2 server IPs |
+| [Abuse.ch ThreatFox](https://threatfox.abuse.ch/) | Threat Infrastructure | IOCs (Indicators of Compromise) |
+| [SANS DShield](https://isc.sans.edu/) | Active Attackers | Top attacking IPs from global honeypot network |
+| [ipapi.co](https://ipapi.co/) | Geolocation | IP to location mapping |
 
 ## Quick Start
-
-### Option 1: Simple HTTP Server (No Installation Required)
 
 1. Navigate to the project directory:
 ```bash
@@ -25,111 +32,51 @@ cd CyberAttackMap
 
 2. Start a local server:
 ```bash
-# Using Python 3
-python3 -m http.server 8000
-
-# Or using Python 2
-python -m http.server 8000
-
-# Or using Node.js (if you have npx)
-npx serve .
+python3 -m http.server 8080
 ```
 
-3. Open your browser and visit:
+3. Open your browser:
 ```
-http://localhost:8000
-```
-
-### Option 2: Using npm scripts
-
-```bash
-npm start
-# or
-npm run serve
+http://localhost:8080
 ```
 
 ## How It Works
 
-- **Real Threat Intelligence**: The app fetches real cyber threat data from Abuse.ch APIs:
-  - **Feodo Tracker**: Lists malware C2 (Command & Control) servers
-  - **ThreatFox**: IOC (Indicators of Compromise) feed with various threat types
-- **IP Geolocation**: Threat IPs are geolocated using ip-api.com to display attacks on the map
-- **Smart Rate Limiting**: Respects API rate limits (45 requests/minute for geolocation API)
-- **Fallback System**: If APIs are unavailable (due to CORS restrictions or network issues), the app gracefully falls back to simulated data
-- **Real-time Updates**: New attacks appear every 30-60 seconds (to respect rate limits)
-- **Interactive Markers**: Click on attack markers to see detailed information including malware names, IPs, and timestamps
-- **Filtering**: Filter attacks by type (malware, phishing, DDoS, etc.)
-- **Live Feed**: View a chronological feed of recent attacks with real threat indicators
+1. **Fetches threat data** from Abuse.ch and SANS DShield APIs via CORS proxy
+2. **Geolocates each IP** using ipapi.co to get coordinates
+3. **Displays points on globe** with glow effects - red for infrastructure, orange for attackers
+4. **Ring animations** pulse outward when new threats appear
+5. **Updates feed** with threat details (IP, location, type, source)
 
-## Attack Types
+## What the Data Represents
 
-- **Malware** - Malicious software attacks
-- **Phishing** - Social engineering attacks
-- **DDoS** - Distributed Denial of Service attacks
-- **Ransomware** - Encryption-based attacks
-- **Intrusion** - Unauthorized access attempts
-- **Exploit** - Vulnerability exploitation attacks
+### Threat Infrastructure (Red Points)
+These are known malicious servers - C2 (Command & Control) servers that malware communicates with, or hosts serving malicious payloads. This data comes from security researchers who track botnets.
+
+### Active Attackers (Orange Points)
+These are IP addresses that have been observed attacking honeypot sensors in the SANS DShield network. The size of points reflects the number of attack reports.
 
 ## Controls
 
-- **Play/Pause Button**: Start or pause the attack simulation
-- **Clear Map**: Remove all attacks from the map
-- **Filter Dropdown**: Filter attacks by specific type
-
-## Customization
-
-You can customize the app by:
-
-- Modifying attack generation frequency in `app.js`
-- Adding more cities/coordinates in the `majorCities` array
-- Changing colors in the `attackColors` object
-- Adjusting styling in `styles.css`
-
-## Future Enhancements
-
-- Integration with real threat intelligence APIs (Done!)
-- WebSocket support for true real-time updates
-- Historical attack analysis
-- Geographic heat maps
-- Attack pattern detection
-- Additional threat intelligence sources
-- CORS proxy server for better API access (if needed)
+- **Drag** - Rotate the globe
+- **Scroll** - Zoom in/out
+- **Rotation button** - Toggle auto-rotation
+- **Reset button** - Return to default view
 
 ## Technology Stack
 
-- **HTML5** - Structure
-- **CSS3** - Styling with modern features
-- **JavaScript (ES6+)** - Logic and interactivity
-- **Leaflet.js** - Interactive mapping library
-- **OpenStreetMap** - Map tiles
-- **Abuse.ch APIs** - Real threat intelligence (Feodo Tracker, ThreatFox)
-- **ip-api.com** - IP geolocation service
+- **Globe.gl** - 3D globe rendering
+- **Three.js** - WebGL graphics
+- **Vanilla JS** - No frameworks
+- **Inter & JetBrains Mono** - Typography
 
-## API Information
+## Privacy & Ethics
 
-### Data Sources (Free, No API Key Required)
-
-1. **Abuse.ch Feodo Tracker**
-   - Endpoint: `https://feodotracker.abuse.ch/downloads/ipblocklist.json`
-   - Provides: Malware C2 server IPs
-   - Free, publicly available
-
-2. **Abuse.ch ThreatFox**
-   - Endpoint: `https://threatfox.abuse.ch/export/json/recent/`
-   - Provides: IOCs (Indicators of Compromise)
-   - Free, publicly available
-
-3. **ip-api.com** (IP Geolocation)
-   - Endpoint: `http://ip-api.com/json/{ip}`
-   - Free tier: 45 requests/minute
-   - No API key required for basic use
-
-### Important Notes
-
-- **CORS Restrictions**: Some security APIs may block browser CORS requests. The app handles this gracefully and falls back to simulated data if needed.
-- **Rate Limits**: The app respects API rate limits by caching geolocation data and spacing requests appropriately.
-- **Privacy**: Only public threat intelligence IPs are queried for geolocation. No user data is sent to APIs.
+- Only queries public threat intelligence APIs
+- No user data is collected or transmitted
+- All displayed IPs are from public blocklists or honeypot reports
+- Data is used for educational visualization only
 
 ## License
 
-MIT License - See LICENSE file for details
+MIT License

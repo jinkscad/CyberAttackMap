@@ -1,857 +1,431 @@
-// Initialize the map
-const map = L.map('map').setView([20, 0], 2);
+// ============================================
+// GLOBAL THREAT INTELLIGENCE
+// Real data only - no simulations
+// ============================================
 
-// Add OpenStreetMap tiles
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '(c) OpenStreetMap contributors',
-    maxZoom: 19,
-}).addTo(map);
+let globe;
+let isRotating = true;
 
-// Dark theme tile layer (alternative)
-// L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-//     attribution: '(c) OpenStreetMap contributors (c) CARTO',
-//     subdomains: 'abcd',
-//     maxZoom: 19
-// }).addTo(map);
+// Data stores
+const threatPoints = [];
+const attackerPoints = [];
+const countryStats = new Map();
+const geoCache = new Map();
 
-// Attack type colors
-const attackColors = {
-    malware: '#ff4444',
-    phishing: '#ff8800',
-    ddos: '#ffdd00',
-    ransomware: '#00ff88',
-    intrusion: '#0088ff',
-    exploit: '#8800ff'
+// Stats
+let totalInfra = 0;
+let totalAttackers = 0;
+let totalReports = 0;
+
+// Colors
+const COLORS = {
+    infrastructure: '#ef4444',
+    attacker: '#f97316',
+    glow: {
+        infra: 'rgba(239, 68, 68, 0.6)',
+        attacker: 'rgba(249, 115, 22, 0.6)'
+    }
 };
 
-// Store markers and attacks
-let markers = [];
-let attacks = [];
-let isPlaying = true;
-let updateInterval;
-let countriesAffected = new Set();
-let attackTypesSet = new Set();
-let lastUpdateTime = null;
-let geolocationCache = new Map(); // Cache IP geolocations to avoid rate limits
-let realThreatCount = 0; // Track real vs simulated attacks
-
-// API Configuration
-const API_CONFIG = {
-    // CORS proxy to bypass browser CORS restrictions
-    // Using allorigins.win (free, no API key needed)
-    CORS_PROXY: 'https://api.allorigins.win/get?url=',
-    // Abuse.ch APIs (free, no API key needed)
-    FEODO_TRACKER: 'https://feodotracker.abuse.ch/downloads/ipblocklist.json',
-    URLHAUS: 'https://urlhaus.abuse.ch/downloads/csv_recent/',
+// API endpoints
+const API = {
+    CORS_PROXY: 'https://api.allorigins.win/raw?url=',
+    FEODO_TEXT: 'https://feodotracker.abuse.ch/downloads/ipblocklist.txt',
     THREATFOX: 'https://threatfox.abuse.ch/export/json/recent/',
-    // Alternative: Use Abuse.ch IP blocklist (plain text format that works better)
-    FEODO_IPBLOCKLIST: 'https://feodotracker.abuse.ch/downloads/ipblocklist.txt',
-    // IP Geolocation APIs (multiple fallbacks)
-    // Primary: BigDataCloud (free, good CORS support, no API key needed)
-    IP_API_BIGDATACLOUD: 'https://api.bigdatacloud.net/data/ip-geolocation',
-    // Fallback 1: ipapi.co (free, 1,000 req/day, no key needed)
-    IP_API_IPAPI: 'https://ipapi.co',
-    // Fallback 2: ip-api.com (45 req/min, no key needed)
-    IP_API_IPAPI_COM: 'https://ip-api.com/json/',
-    // Fallback 3: ip-api.io (alternative format)
-    IP_API_IPAPI_IO: 'https://ip-api.io/json',
-    // Rate limiting
-    MIN_UPDATE_INTERVAL: 30000, // 30 seconds between API calls
-    GEOLOCATION_DELAY: 2000, // 2 seconds between geolocation requests (30 req/min)
+    DSHIELD_TOP: 'https://isc.sans.edu/api/topips/records/50?json',
+    UPDATE_INTERVAL: 120000,
+    GEO_DELAY: 400  // Faster loading
 };
 
-// Helper function to fetch text/JSON with CORS proxy fallback
-async function fetchWithProxy(url) {
-    let responseText = null;
-    
-    try {
-        // First try direct fetch
-        const directResponse = await fetch(url, {
-            method: 'GET',
-            mode: 'cors',
-            headers: {
-                'Accept': 'application/json, text/plain, */*',
-            },
-        });
-        
-        if (directResponse.ok) {
-            responseText = await directResponse.text();
-            return responseText;
-        } else {
-            throw new Error(`HTTP ${directResponse.status}`);
-        }
-    } catch (error) {
-        // If direct fails (likely CORS), try with CORS proxy
-        console.log('Direct fetch failed, trying CORS proxy...', error.message);
-    }
-    
-    // Use CORS proxy
-    try {
-        const proxyUrl = `${API_CONFIG.CORS_PROXY}${encodeURIComponent(url)}`;
-        const proxyResponse = await fetch(proxyUrl, {
-            method: 'GET',
-            headers: {
-                'Accept': 'application/json',
-            },
-        });
-        
-        if (!proxyResponse.ok) {
-            throw new Error(`Proxy fetch failed: ${proxyResponse.status}`);
-        }
-        
-        // The proxy wraps the response in a JSON object
-        const proxyData = await proxyResponse.json();
-        
-        if (!proxyData || !proxyData.contents) {
-            throw new Error('Invalid proxy response format');
-        }
-        
-        responseText = proxyData.contents;
-        return responseText;
-    } catch (proxyError) {
-        console.error('CORS proxy also failed:', proxyError);
-        throw new Error(`Both direct and proxy fetch failed: ${proxyError.message}`);
-    }
+// ============================================
+// GLOBE INITIALIZATION
+// ============================================
+
+function initGlobe() {
+    const container = document.getElementById('globe');
+
+    globe = Globe()
+        .globeImageUrl('//unpkg.com/three-globe/example/img/earth-blue-marble.jpg')
+        .bumpImageUrl('//unpkg.com/three-globe/example/img/earth-topology.png')
+        .backgroundImageUrl('//unpkg.com/three-globe/example/img/night-sky.png')
+        .showAtmosphere(true)
+        .atmosphereColor('#3b82f6')
+        .atmosphereAltitude(0.2)
+        .htmlElementsData([])
+        .htmlElement(d => {
+            const el = document.createElement('div');
+            el.style.cssText = `
+                width: ${d.size}px;
+                height: ${d.size}px;
+                border-radius: 50%;
+                background: ${d.color};
+                box-shadow: 0 0 ${d.size * 2}px ${d.glow}, 0 0 ${d.size * 4}px ${d.glow};
+                pointer-events: none;
+            `;
+            return el;
+        })
+        .htmlAltitude(0.01)
+        .ringsData([])
+        .ringColor(() => t => `rgba(239, 68, 68, ${1 - t})`)
+        .ringMaxRadius(4)
+        .ringPropagationSpeed(3)
+        .ringRepeatPeriod(800)
+        (container);
+
+    globe.pointOfView({ lat: 30, lng: 0, altitude: 2.2 });
+    globe.controls().autoRotate = true;
+    globe.controls().autoRotateSpeed = 0.4;
+
+    const resize = () => {
+        globe.width(container.clientWidth);
+        globe.height(container.clientHeight);
+    };
+    window.addEventListener('resize', resize);
+    resize();
 }
 
-// Helper function to extract IP from various formats
-function extractIP(text) {
-    const ipRegex = /\b(?:\d{1,3}\.){3}\d{1,3}\b/;
-    const match = text?.match(ipRegex);
-    return match ? match[0] : null;
+// ============================================
+// API FUNCTIONS
+// ============================================
+
+async function fetchViaProxy(url) {
+    const proxyUrl = `${API.CORS_PROXY}${encodeURIComponent(url)}`;
+    console.log('Fetching via proxy:', url);
+
+    const response = await fetch(proxyUrl);
+    if (!response.ok) {
+        throw new Error(`Proxy fetch failed: ${response.status}`);
+    }
+    return await response.text();
 }
 
-// Get geolocation for an IP address using multiple API fallbacks
-async function getIPGeolocation(ip) {
-    // Check cache first
-    if (geolocationCache.has(ip)) {
-        return geolocationCache.get(ip);
+async function geolocateIP(ip) {
+    if (geoCache.has(ip)) {
+        return geoCache.get(ip);
     }
 
-    // Skip private/local IPs
-    if (ip.startsWith('192.168.') || ip.startsWith('10.') || ip.startsWith('172.16.') || ip === '127.0.0.1') {
+    // Skip private IPs
+    if (ip.startsWith('192.168.') || ip.startsWith('10.') ||
+        ip.startsWith('172.16.') || ip.startsWith('127.') ||
+        ip.startsWith('0.') || ip.startsWith('255.')) {
         return null;
     }
 
-    // Try multiple APIs in order with fallbacks
-    const apis = [
-        // API 1: BigDataCloud (good CORS support, free)
-        async () => {
-            try {
-                const url = `${API_CONFIG.IP_API_BIGDATACLOUD}?ip=${ip}`;
-                const responseText = await fetchWithProxy(url);
-                const data = JSON.parse(responseText);
-                if (data && data.location && data.location.latitude && data.location.longitude) {
-                    return {
-                        lat: data.location.latitude,
-                        lon: data.location.longitude,
-                        city: data.location.city || data.city || 'Unknown',
-                        country: data.location.country?.name || data.country || 'Unknown',
-                        countryCode: data.location.country?.isoAlpha2 || data.countryCode || 'XX',
-                    };
-                }
-                throw new Error('Invalid response format');
-            } catch (error) {
-                // If proxy fails, try direct
-                const response = await fetch(`${API_CONFIG.IP_API_BIGDATACLOUD}?ip=${ip}`, {
-                    method: 'GET',
-                    headers: { 'Accept': 'application/json' }
-                });
-                if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                const data = await response.json();
-                if (data && data.location && data.location.latitude && data.location.longitude) {
-                    return {
-                        lat: data.location.latitude,
-                        lon: data.location.longitude,
-                        city: data.location.city || data.city || 'Unknown',
-                        country: data.location.country?.name || data.country || 'Unknown',
-                        countryCode: data.location.country?.isoAlpha2 || data.countryCode || 'XX',
-                    };
-                }
-                throw new Error('Invalid response format');
-            }
-        },
-        // API 2: ipapi.co (1,000 req/day free tier, good CORS)
-        async () => {
-            try {
-                const url = `${API_CONFIG.IP_API_IPAPI}/${ip}/json/`;
-                const responseText = await fetchWithProxy(url);
-                const data = JSON.parse(responseText);
-                if (data && !data.error && data.latitude && data.longitude) {
-                    return {
-                        lat: parseFloat(data.latitude),
-                        lon: parseFloat(data.longitude),
-                        city: data.city || 'Unknown',
-                        country: data.country_name || 'Unknown',
-                        countryCode: data.country_code || 'XX',
-                    };
-                }
-                throw new Error(data.reason || 'Invalid response');
-            } catch (error) {
-                // Try direct if proxy fails
-                const response = await fetch(`${API_CONFIG.IP_API_IPAPI}/${ip}/json/`, {
-                    method: 'GET',
-                    headers: { 'Accept': 'application/json' }
-                });
-                if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                const data = await response.json();
-                if (data && !data.error && data.latitude && data.longitude) {
-                    return {
-                        lat: parseFloat(data.latitude),
-                        lon: parseFloat(data.longitude),
-                        city: data.city || 'Unknown',
-                        country: data.country_name || 'Unknown',
-                        countryCode: data.country_code || 'XX',
-                    };
-                }
-                throw new Error(data.reason || 'Invalid response');
-            }
-        },
-        // API 3: ip-api.com (45 req/min, fallback)
-        async () => {
-            try {
-                const url = `${API_CONFIG.IP_API_IPAPI_COM}${ip}?fields=status,country,countryCode,lat,lon,city`;
-                const responseText = await fetchWithProxy(url);
-                const data = JSON.parse(responseText);
-                if (data.status === 'success' && data.lat && data.lon) {
-                    return {
-                        lat: data.lat,
-                        lon: data.lon,
-                        city: data.city || 'Unknown',
-                        country: data.country || 'Unknown',
-                        countryCode: data.countryCode || 'XX',
-                    };
-                }
-                throw new Error('Failed to geolocate');
-            } catch (error) {
-                // Try direct if proxy fails
-                const response = await fetch(`${API_CONFIG.IP_API_IPAPI_COM}${ip}?fields=status,country,countryCode,lat,lon,city`, {
-                    method: 'GET',
-                    headers: { 'Accept': 'application/json' }
-                });
-                if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                const data = await response.json();
-                if (data.status === 'success' && data.lat && data.lon) {
-                    return {
-                        lat: data.lat,
-                        lon: data.lon,
-                        city: data.city || 'Unknown',
-                        country: data.country || 'Unknown',
-                        countryCode: data.countryCode || 'XX',
-                    };
-                }
-                throw new Error('Failed to geolocate');
-            }
-        },
-    ];
+    // Try ipapi.co first (HTTPS, good CORS)
+    try {
+        const response = await fetch(`https://ipapi.co/${ip}/json/`);
+        const data = await response.json();
 
-    // Try each API until one works
-    const apiNames = ['BigDataCloud', 'ipapi.co', 'ip-api.com'];
-    for (let i = 0; i < apis.length; i++) {
-        try {
-            const geoData = await apis[i]();
-            if (geoData && geoData.lat && geoData.lon) {
-                // Cache for 1 hour
-                geolocationCache.set(ip, geoData);
-                setTimeout(() => geolocationCache.delete(ip), 3600000);
-                // Log successful API (only occasionally to avoid spam)
-                if (Math.random() < 0.1) {
-                    console.log(`Geolocated ${ip} using ${apiNames[i]}`);
-                }
-                return geoData;
-            }
-        } catch (error) {
-            // If this is not the last API, continue to next one silently
-            if (i < apis.length - 1) {
-                // Only log occasionally to avoid console spam
-                if (Math.random() < 0.05) { // 5% chance
-                    console.log(`${apiNames[i]} failed for ${ip}, trying next API...`);
-                }
-                continue;
-            } else {
-                // Last API failed, log warning
-                console.warn(`All geolocation APIs failed for IP ${ip}. Last error:`, error.message);
-            }
+        if (!data.error && data.latitude && data.longitude) {
+            const result = {
+                lat: data.latitude,
+                lon: data.longitude,
+                city: data.city || 'Unknown',
+                country: data.country_name || 'Unknown'
+            };
+            geoCache.set(ip, result);
+            console.log(`Geolocated ${ip}: ${result.city}, ${result.country}`);
+            return result;
         }
+    } catch (e) {
+        console.warn(`ipapi.co failed for ${ip}:`, e.message);
+    }
+
+    // Fallback to ip-api.com via proxy
+    try {
+        const url = `http://ip-api.com/json/${ip}?fields=status,country,city,lat,lon`;
+        const text = await fetchViaProxy(url);
+        const data = JSON.parse(text);
+
+        if (data.status === 'success' && data.lat && data.lon) {
+            const result = {
+                lat: data.lat,
+                lon: data.lon,
+                city: data.city || 'Unknown',
+                country: data.country || 'Unknown'
+            };
+            geoCache.set(ip, result);
+            console.log(`Geolocated ${ip} via proxy: ${result.city}, ${result.country}`);
+            return result;
+        }
+    } catch (e) {
+        console.warn(`ip-api.com proxy failed for ${ip}:`, e.message);
     }
 
     return null;
 }
 
-// Fetch malware IPs from Feodo Tracker
-async function fetchFeodoTrackerData() {
-    try {
-        // Try JSON endpoint first
-        const responseText = await fetchWithProxy(API_CONFIG.FEODO_TRACKER);
-        
-        let data;
-        try {
-            data = JSON.parse(responseText);
-        } catch (parseError) {
-            // If JSON fails, try the text blocklist format
-            console.log('JSON parse failed, trying text format...');
-            return await fetchFeodoTrackerTextFormat();
-        }
-        
-        if (data && Array.isArray(data)) {
-            updateAPIStatus('Connected to Feodo Tracker (Abuse.ch)', true);
-            return data
-                .filter(item => item.ip_address)
-                .slice(0, 20) // Limit to 20 most recent
-                .map(item => ({
-                    ip: item.ip_address,
-                    type: 'malware',
-                    malware: item.malware || 'Unknown Malware',
-                    port: item.port || 'Unknown',
-                    status: item.status || 'online',
-                    firstSeen: item.first_seen,
-                }));
-        }
-    } catch (error) {
-        console.warn('Failed to fetch Feodo Tracker JSON, trying text format:', error);
-        return await fetchFeodoTrackerTextFormat();
-    }
-    return [];
-}
+// ============================================
+// DATA FETCHING
+// ============================================
 
-// Fetch Feodo Tracker in text format (more reliable for CORS)
-async function fetchFeodoTrackerTextFormat() {
+async function fetchThreatInfrastructure() {
+    console.log('Fetching threat infrastructure...');
+    setStatus('Fetching threat infrastructure...', false);
+    const threats = [];
+
+    // Feodo Tracker
     try {
-        const text = await fetchWithProxy(API_CONFIG.FEODO_IPBLOCKLIST);
-        
-        // Parse text blocklist format
-        // Format: IP addresses, one per line (may have comments starting with #)
+        const text = await fetchViaProxy(API.FEODO_TEXT);
+        console.log('Feodo response length:', text.length);
+
         const lines = text.split('\n');
-        const ips = [];
-        
         for (const line of lines) {
-            const trimmedLine = line.trim();
-            // Skip empty lines and comments
-            if (!trimmedLine || trimmedLine.startsWith('#')) continue;
-            
-            // Extract IP (may have whitespace or comments after)
-            const ipMatch = trimmedLine.match(/^(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})/);
-            if (ipMatch) {
-                ips.push({
-                    ip: ipMatch[1],
-                    type: 'malware',
-                    malware: 'Feodo C2 Server',
-                    status: 'online',
+            if (!line.trim() || line.startsWith('#')) continue;
+            const match = line.match(/^(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})/);
+            if (match) {
+                threats.push({
+                    ip: match[1],
+                    type: 'C2 Server',
+                    source: 'Feodo Tracker'
                 });
             }
-            
-            // Limit to 20 IPs
-            if (ips.length >= 20) break;
         }
-        
-        if (ips.length > 0) {
-            updateAPIStatus('Connected to Feodo Tracker (Abuse.ch)', true);
-            return ips;
-        }
-    } catch (error) {
-        console.warn('Failed to fetch Feodo Tracker text format:', error);
+        console.log('Feodo threats found:', threats.length);
+    } catch (e) {
+        console.error('Feodo fetch failed:', e);
     }
-    return [];
-}
 
-// Fetch recent threats from ThreatFox
-async function fetchThreatFoxData() {
+    // ThreatFox
     try {
-        const responseText = await fetchWithProxy(API_CONFIG.THREATFOX);
-        
-        let data;
-        try {
-            data = JSON.parse(responseText);
-        } catch (parseError) {
-            console.warn('Failed to parse ThreatFox JSON:', parseError);
-            return [];
-        }
-        
-        if (data && data.query_status === 'ok' && Array.isArray(data.data)) {
-            updateAPIStatus('Connected to ThreatFox (Abuse.ch)', true);
-            const threats = [];
-            for (const item of data.data.slice(0, 15)) {
-                const ip = extractIP(item.ioc || item.malware || '');
-                if (ip) {
-                    // Determine attack type based on threat type
-                    let attackType = 'intrusion';
-                    if (item.malware && item.malware.toLowerCase().includes('ransomware')) {
-                        attackType = 'ransomware';
-                    } else if (item.threat_type === 'botnet_cc') {
-                        attackType = 'malware';
-                    } else if (item.threat_type === 'payload_delivery') {
-                        attackType = 'exploit';
-                    }
-                    
+        const text = await fetchViaProxy(API.THREATFOX);
+        const data = JSON.parse(text);
+
+        if (data.query_status === 'ok' && data.data) {
+            let added = 0;
+            for (const item of data.data) {
+                if (added >= 30) break;
+                const ipMatch = (item.ioc || '').match(/\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/);
+                if (ipMatch) {
                     threats.push({
-                        ip: ip,
-                        type: attackType,
-                        malware: item.malware || 'Unknown Threat',
-                        threatType: item.threat_type || 'unknown',
-                        confidence: item.confidence_level || 50,
-                        firstSeen: item.first_seen,
+                        ip: ipMatch[0],
+                        type: item.threat_type || 'Malware',
+                        malware: item.malware || 'Unknown',
+                        source: 'ThreatFox'
                     });
+                    added++;
                 }
             }
-            return threats;
+            console.log('ThreatFox threats added:', added);
         }
-    } catch (error) {
-        console.warn('Failed to fetch ThreatFox data:', error);
-        // Don't update status here as Feodo might work
+    } catch (e) {
+        console.error('ThreatFox fetch failed:', e);
     }
-    return [];
+
+    return threats;
 }
 
-// Create attack from real threat data
-async function createAttackFromThreat(threat) {
-    // Safety check
-    if (!threat || !threat.ip) {
-        return null;
-    }
-    
+async function fetchActiveAttackers() {
+    console.log('Fetching active attackers...');
+    setStatus('Fetching active attackers...', false);
+    const attackers = [];
+
     try {
-        const geoData = await getIPGeolocation(threat.ip);
-        
-        if (!geoData || !geoData.lat || !geoData.lon) {
-            return null; // Skip if we can't geolocate
-        }
+        const text = await fetchViaProxy(API.DSHIELD_TOP);
+        const data = JSON.parse(text);
 
-        // Calculate severity based on confidence or status
-        let severity = 3; // Default
-        if (threat.confidence) {
-            severity = Math.min(5, Math.max(1, Math.floor(threat.confidence / 20)));
-        } else if (threat.status === 'online') {
-            severity = 4;
-        }
-
-        const attack = {
-            id: `${threat.ip}-${Date.now()}-${Math.random()}`,
-            lat: geoData.lat,
-            lon: geoData.lon,
-            type: threat.type || 'intrusion',
-            city: geoData.city || 'Unknown',
-            country: geoData.country || 'Unknown',
-            countryCode: geoData.countryCode || 'XX',
-            timestamp: new Date(),
-            severity: severity,
-            sourceIP: threat.ip,
-            targetIP: null,
-            malware: threat.malware,
-            threatType: threat.threatType,
-            confidence: threat.confidence,
-            firstSeen: threat.firstSeen,
-            isReal: true, // Mark as real data
-        };
-
-        return attack;
-    } catch (error) {
-        console.warn(`Error creating attack from threat ${threat.ip}:`, error);
-        return null;
-    }
-}
-
-// Generate a fallback simulated attack if API fails
-function generateFallbackAttack() {
-    // Fallback cities for simulated attacks
-    const fallbackCities = [
-        { name: 'New York', lat: 40.7128, lon: -74.0060, country: 'USA' },
-        { name: 'London', lat: 51.5074, lon: -0.1278, country: 'UK' },
-        { name: 'Tokyo', lat: 35.6762, lon: 139.6503, country: 'Japan' },
-        { name: 'Moscow', lat: 55.7558, lon: 37.6173, country: 'Russia' },
-        { name: 'Beijing', lat: 39.9042, lon: 116.4074, country: 'China' },
-        { name: 'Paris', lat: 48.8566, lon: 2.3522, country: 'France' },
-        { name: 'Berlin', lat: 52.5200, lon: 13.4050, country: 'Germany' },
-    ];
-
-    const attackTypes = ['malware', 'phishing', 'ddos', 'ransomware', 'intrusion', 'exploit'];
-    const city = fallbackCities[Math.floor(Math.random() * fallbackCities.length)];
-    const attackType = attackTypes[Math.floor(Math.random() * attackTypes.length)];
-    
-    const lat = city.lat + (Math.random() - 0.5) * 2;
-    const lon = city.lon + (Math.random() - 0.5) * 2;
-    
-    return {
-        id: Date.now() + Math.random(),
-        lat: lat,
-        lon: lon,
-        type: attackType,
-        city: city.name,
-        country: city.country,
-        timestamp: new Date(),
-        severity: Math.floor(Math.random() * 5) + 1,
-        sourceIP: generateRandomIP(),
-        targetIP: generateRandomIP(),
-        isReal: false,
-    };
-}
-
-// Generate random IP address (for fallback)
-function generateRandomIP() {
-    return `${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`;
-}
-
-// Create marker for an attack
-function createMarker(attack) {
-    const color = attackColors[attack.type];
-    const size = 5 + attack.severity * 2;
-    
-    // Use different border for real vs simulated attacks
-    const borderColor = attack.isReal ? '#ff0000' : '#ffffff';
-    const borderWidth = attack.isReal ? 2 : 1;
-    
-    const marker = L.circleMarker([attack.lat, attack.lon], {
-        radius: size,
-        fillColor: color,
-        color: borderColor,
-        weight: borderWidth,
-        opacity: 1,
-        fillOpacity: 0.8,
-    }).addTo(map);
-    
-    // Build popup content
-    let popupContent = `
-        <div style="color: #333; font-family: Arial, sans-serif;">
-            <strong>${attack.type.toUpperCase()}</strong>
-            ${attack.isReal ? ' <span style="color: #ff0000; font-size: 0.8em;">[REAL]</span>' : ''}
-            <br>
-            <strong>Location:</strong> ${attack.city}, ${attack.country}<br>
-            <strong>Severity:</strong> ${'*'.repeat(attack.severity)}<br>
-            <strong>Source IP:</strong> ${attack.sourceIP}<br>
-    `;
-    
-    if (attack.targetIP) {
-        popupContent += `<strong>Target IP:</strong> ${attack.targetIP}<br>`;
-    }
-    
-    if (attack.malware) {
-        popupContent += `<strong>Malware/Threat:</strong> ${attack.malware}<br>`;
-    }
-    
-    if (attack.confidence !== undefined) {
-        popupContent += `<strong>Confidence:</strong> ${attack.confidence}%<br>`;
-    }
-    
-    if (attack.firstSeen) {
-        popupContent += `<strong>First Seen:</strong> ${new Date(attack.firstSeen * 1000).toLocaleString()}<br>`;
-    }
-    
-    popupContent += `<strong>Detected:</strong> ${attack.timestamp.toLocaleTimeString()}</div>`;
-    
-    marker.bindPopup(popupContent);
-    
-    // Add animation
-    marker.setStyle({ fillOpacity: 0.8 });
-    
-    // Pulsing animation for real attacks
-    if (attack.isReal) {
-        let pulseCount = 0;
-        const pulseInterval = setInterval(() => {
-            pulseCount++;
-            if (pulseCount >= 5) {
-                clearInterval(pulseInterval);
-                return;
-            }
-            const currentOpacity = marker.options.fillOpacity;
-            marker.setStyle({ fillOpacity: currentOpacity === 0.8 ? 0.4 : 0.8 });
-        }, 500);
-    }
-    
-    return marker;
-}
-
-// Update API status indicator
-function updateAPIStatus(message, isSuccess = true) {
-    const statusElement = document.getElementById('statusText');
-    const statusContainer = document.getElementById('apiStatus');
-    if (statusElement && statusContainer) {
-        statusElement.textContent = message;
-        statusContainer.className = `api-status ${isSuccess ? 'success' : 'warning'}`;
-    }
-}
-
-// Add attack to map and feed
-function addAttack(attack) {
-    // Safety check: make sure attack is valid
-    if (!attack || !attack.lat || !attack.lon) {
-        console.warn('Invalid attack data:', attack);
-        return;
-    }
-    
-    attacks.push(attack);
-    countriesAffected.add(attack.country);
-    attackTypesSet.add(attack.type);
-    
-    if (attack.isReal) {
-        realThreatCount++;
-    }
-    
-    try {
-        const marker = createMarker(attack);
-        markers.push({ marker, attack });
-        
-        // Add to feed
-        addToFeed(attack);
-        
-        // Update stats
-        updateStats();
-    } catch (error) {
-        console.error('Error adding attack to map:', error);
-        // Remove from arrays if marker creation failed
-        attacks.pop();
-        if (attack.isReal) {
-            realThreatCount--;
-        }
-    }
-    
-    // Keep only last 1000 attacks in memory
-    if (attacks.length > 1000) {
-        const oldest = attacks.shift();
-        if (oldest && oldest.isReal) {
-            realThreatCount--;
-        }
-        const markerIndex = markers.findIndex(m => m.attack.id === oldest.id);
-        if (markerIndex !== -1) {
-            try {
-                if (map.hasLayer(markers[markerIndex].marker)) {
-                    map.removeLayer(markers[markerIndex].marker);
-                }
-            } catch (error) {
-                console.warn('Error removing old marker:', error);
-            }
-            markers.splice(markerIndex, 1);
-        }
-    }
-}
-
-// Add attack to feed
-function addToFeed(attack) {
-    const feedContent = document.getElementById('feedContent');
-    const attackItem = document.createElement('div');
-    attackItem.className = `attack-item ${attack.type}`;
-    
-    const timeStr = attack.timestamp.toLocaleTimeString();
-    const realBadge = attack.isReal ? ' <span style="color: #ff4444;">[REAL]</span>' : '';
-    let description = `
-        <div class="time">${timeStr}</div>
-        <div class="description">
-            <strong>${attack.type.toUpperCase()}</strong>${realBadge} detected in ${attack.city}, ${attack.country}
-            <br>Severity: ${'*'.repeat(attack.severity)}
-    `;
-    
-    if (attack.malware) {
-        description += `<br>Threat: ${attack.malware}`;
-    }
-    
-    if (attack.sourceIP) {
-        description += `<br>IP: ${attack.sourceIP}`;
-    }
-    
-    description += '</div>';
-    
-    attackItem.innerHTML = description;
-    
-    feedContent.insertBefore(attackItem, feedContent.firstChild);
-    
-    // Keep only last 30 items in feed
-    while (feedContent.children.length > 30) {
-        feedContent.removeChild(feedContent.lastChild);
-    }
-}
-
-// Update statistics
-function updateStats() {
-    document.getElementById('activeThreats').textContent = attacks.length;
-    document.getElementById('countriesAffected').textContent = countriesAffected.size;
-    document.getElementById('attackTypes').textContent = attackTypesSet.size;
-    const realThreatsElement = document.getElementById('realThreats');
-    if (realThreatsElement) {
-        realThreatsElement.textContent = realThreatCount;
-    }
-}
-
-// Filter attacks by type
-function filterAttacks(type) {
-    markers.forEach(({ marker, attack }) => {
-        if (type === 'all' || attack.type === type) {
-            if (!map.hasLayer(marker)) {
-                marker.addTo(map);
-            }
-        } else {
-            if (map.hasLayer(marker)) {
-                map.removeLayer(marker);
-            }
-        }
-    });
-}
-
-// Clear all attacks
-function clearMap() {
-    // Remove all markers from map
-    markers.forEach(({ marker }) => {
-        if (map.hasLayer(marker)) {
-            map.removeLayer(marker);
-        }
-    });
-    
-    // Clear all arrays and sets
-    markers = [];
-    attacks = [];
-    countriesAffected.clear();
-    attackTypesSet.clear();
-    realThreatCount = 0;
-    
-    // Clear the feed
-    const feedContent = document.getElementById('feedContent');
-    if (feedContent) {
-        feedContent.innerHTML = '';
-    }
-    
-    // Reset rate limiting to allow immediate new data fetch
-    lastUpdateTime = null;
-    
-    // Clear geolocation cache to allow fresh lookups
-    geolocationCache.clear();
-    
-    // Update stats
-    updateStats();
-    
-    // Update status
-    updateAPIStatus('Map cleared. Fetching new data...', true);
-    
-    // Optionally trigger a new fetch if playing
-    if (isPlaying) {
-        // Wait a moment then fetch new data
-        setTimeout(() => {
-            updateAttacks();
-        }, 500);
-    }
-}
-
-// Main update loop - fetch real threat data
-async function updateAttacks() {
-    if (!isPlaying) return;
-    
-    // Check rate limiting
-    const now = Date.now();
-    if (lastUpdateTime && (now - lastUpdateTime) < API_CONFIG.MIN_UPDATE_INTERVAL) {
-        // Use fallback if too soon
-        const fallback = generateFallbackAttack();
-        addAttack(fallback);
-        return;
-    }
-    
-    lastUpdateTime = now;
-    
-    // Show loading status
-    updateAPIStatus('Fetching threat data...', true);
-    
-    try {
-        // Fetch real threat data from multiple sources
-        const [feodoData, threatFoxData] = await Promise.allSettled([
-            fetchFeodoTrackerData(),
-            fetchThreatFoxData(),
-        ]);
-        
-        // Extract successful results
-        const feodoResults = feodoData.status === 'fulfilled' ? feodoData.value : [];
-        const threatFoxResults = threatFoxData.status === 'fulfilled' ? threatFoxData.value : [];
-        
-        // Log failures for debugging
-        if (feodoData.status === 'rejected') {
-            console.warn('Feodo Tracker fetch failed:', feodoData.reason);
-        }
-        if (threatFoxData.status === 'rejected') {
-            console.warn('ThreatFox fetch failed:', threatFoxData.reason);
-        }
-        
-        // Combine all threats
-        const allThreats = [...feodoResults, ...threatFoxResults];
-        
-        if (allThreats.length > 0) {
-            updateAPIStatus('Geolocating threat IPs...', true);
-            
-            // Process threats (limit concurrent geolocation requests)
-            // Reduced to 5 per update to be safe with rate limits
-            const threatsToProcess = allThreats.slice(0, 5);
-            
-            let processedCount = 0;
-            for (const threat of threatsToProcess) {
-                const attack = await createAttackFromThreat(threat);
-                if (attack) {
-                    addAttack(attack);
-                    processedCount++;
-                    // Delay to avoid rate limits on geolocation APIs
-                    await new Promise(resolve => setTimeout(resolve, API_CONFIG.GEOLOCATION_DELAY)); // ~2 sec = 30 req/min
+        if (Array.isArray(data)) {
+            for (const item of data) {
+                if (item.source) {
+                    attackers.push({
+                        ip: item.source,
+                        reports: parseInt(item.reports) || 0,
+                        targets: parseInt(item.targets) || 0,
+                        source: 'DShield'
+                    });
+                    totalReports += parseInt(item.reports) || 0;
                 }
             }
-            
-            if (processedCount > 0) {
-                updateAPIStatus(`Loaded ${processedCount} real threats`, true);
+            console.log('DShield attackers found:', attackers.length);
+        }
+    } catch (e) {
+        console.error('DShield fetch failed:', e);
+    }
+
+    return attackers;
+}
+
+// ============================================
+// POINT MANAGEMENT
+// ============================================
+
+async function processThreats(threats, type) {
+    console.log(`Processing ${threats.length} ${type} threats...`);
+    let processed = 0;
+
+    for (const threat of threats) {
+        const geo = await geolocateIP(threat.ip);
+
+        if (geo) {
+            const point = {
+                lat: geo.lat,
+                lng: geo.lon,
+                type: type,
+                color: type === 'infra' ? COLORS.infrastructure : COLORS.attacker,
+                glow: type === 'infra' ? COLORS.glow.infra : COLORS.glow.attacker,
+                size: type === 'infra' ? 6 : Math.min(10, 4 + (threat.reports || 0) / 50000),
+                data: { ip: threat.ip, city: geo.city, country: geo.country, ...threat }
+            };
+
+            if (type === 'infra') {
+                threatPoints.push(point);
+                totalInfra++;
             } else {
-                // If no attacks were geolocated, add a fallback
-                updateAPIStatus('Using simulated data (geolocation failed)', false);
-                const fallback = generateFallbackAttack();
-                addAttack(fallback);
+                attackerPoints.push(point);
+                totalAttackers++;
             }
-        } else {
-            // Fallback to simulated if no data available
-            updateAPIStatus('Using simulated data (no API data available). Check console for details.', false);
-            const fallback = generateFallbackAttack();
-            addAttack(fallback);
+
+            countryStats.set(geo.country, (countryStats.get(geo.country) || 0) + 1);
+
+            addToFeed(point);
+            addRing(geo.lat, geo.lon);
+            updateGlobe();
+            updateStats();
+
+            processed++;
+            setStatus(`Processing: ${processed} points loaded`, false);
         }
-    } catch (error) {
-        console.error('Error fetching threat data:', error);
-        updateAPIStatus('Using simulated data (error occurred). Check console for details.', false);
-        // Fallback to simulated attack
-        const fallback = generateFallbackAttack();
-        addAttack(fallback);
+
+        // Rate limit for geolocation API
+        await sleep(API.GEO_DELAY);
     }
+
+    console.log(`Processed ${processed} ${type} points`);
+    return processed;
 }
 
-// Event listeners
-document.getElementById('playPauseBtn').addEventListener('click', () => {
-    isPlaying = !isPlaying;
-    const btn = document.getElementById('playPauseBtn');
-    btn.textContent = isPlaying ? 'Pause' : 'Play';
-    if (isPlaying) {
-        updateAttacks();
-    }
-});
+function updateGlobe() {
+    globe.htmlElementsData([...threatPoints, ...attackerPoints]);
+}
 
-document.getElementById('clearBtn').addEventListener('click', clearMap);
+function addRing(lat, lng) {
+    const rings = globe.ringsData();
+    const ring = { lat, lng };
+    rings.push(ring);
+    globe.ringsData(rings);
 
-document.getElementById('attackTypeFilter').addEventListener('change', (e) => {
-    filterAttacks(e.target.value);
-});
-
-// Start the threat intelligence monitoring
-function startMonitoring() {
-    // Initial load - fetch real data
-    updateAttacks();
-    
-    // Update every 30-60 seconds (to respect rate limits)
-    updateInterval = setInterval(() => {
-        updateAttacks();
-    }, 35000 + Math.random() * 25000); // 35-60 seconds
-    
-    // Also show some initial markers with a slight delay for visualization
     setTimeout(() => {
-        for (let i = 0; i < 3; i++) {
-            setTimeout(() => {
-                const fallback = generateFallbackAttack();
-                addAttack(fallback);
-            }, i * 500);
-        }
-    }, 2000);
+        const idx = rings.indexOf(ring);
+        if (idx > -1) rings.splice(idx, 1);
+        globe.ringsData([...rings]);
+    }, 2500);
 }
 
-// Initialize
-startMonitoring();
+// ============================================
+// UI UPDATES
+// ============================================
 
-// Cleanup on page unload
-window.addEventListener('beforeunload', () => {
-    if (updateInterval) {
-        clearInterval(updateInterval);
+function updateStats() {
+    document.getElementById('threatInfraCount').textContent = totalInfra;
+    document.getElementById('activeAttackers').textContent = totalAttackers;
+    document.getElementById('countriesCount').textContent = countryStats.size;
+    document.getElementById('lastHourAttacks').textContent = formatNumber(totalReports);
+    updateCountryList();
+}
+
+function formatNumber(n) {
+    if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
+    if (n >= 1000) return (n / 1000).toFixed(0) + 'K';
+    return n.toString();
+}
+
+function updateCountryList() {
+    const container = document.getElementById('countryList');
+    const sorted = [...countryStats.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8);
+    container.innerHTML = sorted.map(([country, count]) => `
+        <div class="country-item">
+            <span class="country-name">${country}</span>
+            <span class="country-count">${count}</span>
+        </div>
+    `).join('');
+}
+
+function addToFeed(point) {
+    const feedList = document.getElementById('feedList');
+    const empty = feedList.querySelector('.feed-empty');
+    if (empty) empty.remove();
+
+    const item = document.createElement('div');
+    item.className = `feed-item ${point.type === 'attacker' ? 'attacker' : ''}`;
+
+    const typeLabel = point.type === 'infra' ? point.data.type : 'Active Attacker';
+    const detail = point.type === 'infra'
+        ? (point.data.malware || point.data.source)
+        : `${formatNumber(point.data.reports)} reports`;
+
+    item.innerHTML = `
+        <div class="feed-type">${typeLabel}</div>
+        <div class="feed-location">${point.data.city}, ${point.data.country}</div>
+        <div class="feed-detail">${point.data.ip} - ${detail}</div>
+        <div class="feed-time">${new Date().toLocaleTimeString()}</div>
+    `;
+
+    feedList.insertBefore(item, feedList.firstChild);
+    while (feedList.children.length > 50) feedList.removeChild(feedList.lastChild);
+}
+
+function setStatus(message, connected) {
+    document.getElementById('statusDot').className = 'status-dot' + (connected ? ' connected' : '');
+    document.getElementById('statusText').textContent = message;
+    if (connected) {
+        document.getElementById('updateTime').textContent = `Updated ${new Date().toLocaleTimeString()}`;
     }
-});
+}
 
+// ============================================
+// MAIN
+// ============================================
+
+async function fetchAllData() {
+    console.log('=== Starting data fetch ===');
+
+    try {
+        const threats = await fetchThreatInfrastructure();
+        if (threats.length > 0) {
+            await processThreats(threats.slice(0, 40), 'infra');
+        }
+
+        const attackers = await fetchActiveAttackers();
+        if (attackers.length > 0) {
+            await processThreats(attackers.slice(0, 40), 'attacker');
+        }
+
+        const total = totalInfra + totalAttackers;
+        if (total > 0) {
+            setStatus(`Connected - ${total} threats loaded`, true);
+        } else {
+            setStatus('No data available - check console', false);
+        }
+    } catch (e) {
+        console.error('Fetch error:', e);
+        setStatus('Error: ' + e.message, false);
+    }
+}
+
+function setupControls() {
+    document.getElementById('toggleRotation').addEventListener('click', function() {
+        isRotating = !isRotating;
+        globe.controls().autoRotate = isRotating;
+        this.classList.toggle('active', isRotating);
+    });
+
+    document.getElementById('resetView').addEventListener('click', () => {
+        globe.pointOfView({ lat: 30, lng: 0, altitude: 2.2 }, 1000);
+    });
+}
+
+function sleep(ms) {
+    return new Promise(r => setTimeout(r, ms));
+}
+
+async function init() {
+    console.log('Initializing globe...');
+    initGlobe();
+    setupControls();
+    document.getElementById('toggleRotation').classList.add('active');
+
+    console.log('Starting data fetch...');
+    await fetchAllData();
+}
+
+document.addEventListener('DOMContentLoaded', init);
