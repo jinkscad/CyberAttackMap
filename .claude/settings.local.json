@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(open http://localhost:8080)",
+      "WebFetch(domain:isc.sans.edu)",
+      "Bash(curl:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nRebuild with 3D globe and real-only threat data\n\n- Replace 2D Leaflet map with 3D Globe.gl visualization\n- Remove all simulated/fake data - now uses only real threat intelligence\n- Add SANS DShield integration for active attacker data\n- Show threat infrastructure \\(red\\) and active attackers \\(orange\\) as glowing points\n- Add ring pulse animations for new threats\n- Premium dark UI with glassmorphism panels\n- Inter + JetBrains Mono typography\n- Live feed with threat details\n- Statistics: threat count, attacker count, countries, reports\n\nData sources:\n- Abuse.ch Feodo Tracker \\(C2 servers\\)\n- Abuse.ch ThreatFox \\(IOCs\\)\n- SANS DShield \\(top attacking IPs\\)\n- ipapi.co \\(geolocation\\)\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(python3 -m http.server:*)",
+      "Bash(lsof:*)",
+      "Bash(open http://localhost:8000)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nAdd About page with threat glossary and improve globe\n\n- Add dedicated About page explaining all terminology\n  - C2/Malware Infrastructure definitions\n  - Active Attacker explanations\n  - Data sources documentation\n- Add About button to controls panel\n- Switch to night earth texture with city lights\n- Add country borders overlay\n- Update README with new features\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git push)"
+    ]
+  }
+}

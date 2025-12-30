@@ -105,6 +105,47 @@
             </a>
         </div>
 
+        <!-- Mobile Bottom Sheet Toggle -->
+        <button class="mobile-feed-toggle" id="mobileToggle" title="View threat feed">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 2L12 22M12 2L6 8M12 2L18 8"/>
+            </svg>
+            <span class="toggle-badge" id="mobileBadge">0</span>
+        </button>
+
+        <!-- Mobile Bottom Sheet -->
+        <div class="mobile-sheet" id="mobileSheet">
+            <div class="sheet-handle" id="sheetHandle">
+                <div class="handle-bar"></div>
+            </div>
+            <div class="sheet-content">
+                <div class="sheet-section">
+                    <h2>Live Threat Feed</h2>
+                    <div class="feed-list" id="mobileFeedList">
+                        <div class="feed-empty">Connecting to threat feeds...</div>
+                    </div>
+                </div>
+                <div class="sheet-section">
+                    <h2>Legend</h2>
+                    <div class="legend">
+                        <div class="legend-item">
+                            <span class="legend-dot infra"></span>
+                            <span>C2 / Malware Infrastructure</span>
+                        </div>
+                        <div class="legend-item">
+                            <span class="legend-dot attacker"></span>
+                            <span>Active Attacker</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="sheet-section">
+                    <h2>Top Source Countries</h2>
+                    <div class="country-list" id="mobileCountryList"></div>
+                </div>
+            </div>
+        </div>
+        <div class="sheet-overlay" id="sheetOverlay"></div>
+
         <!-- Data Attribution -->
         <footer class="footer">
             <span>Data: Abuse.ch &bull; SANS DShield</span>

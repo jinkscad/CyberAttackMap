@@ -390,38 +390,66 @@ function formatNumber(n) {
 }
 
 function updateCountryList() {
-    const container = document.getElementById('countryList');
-    const sorted = [...countryStats.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8);
-    container.innerHTML = sorted.map(([country, count]) => `
-        <div class="country-item">
-            <span class="country-name">${country}</span>
-            <span class="country-count">${count}</span>
-        </div>
-    `).join('');
+    const html = [...countryStats.entries()]
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 8)
+        .map(([country, count]) => `
+            <div class="country-item">
+                <span class="country-name">${country}</span>
+                <span class="country-count">${count}</span>
+            </div>
+        `).join('');
+
+    // Update both desktop and mobile
+    const desktop = document.getElementById('countryList');
+    const mobile = document.getElementById('mobileCountryList');
+    if (desktop) desktop.innerHTML = html;
+    if (mobile) mobile.innerHTML = html;
 }
 
 function addToFeed(point) {
-    const feedList = document.getElementById('feedList');
-    const empty = feedList.querySelector('.feed-empty');
-    if (empty) empty.remove();
-
-    const item = document.createElement('div');
-    item.className = `feed-item ${point.type === 'attacker' ? 'attacker' : ''}`;
-
     const typeLabel = point.type === 'infra' ? point.data.type : 'Active Attacker';
     const detail = point.type === 'infra'
         ? (point.data.malware || point.data.source)
         : `${formatNumber(point.data.reports)} reports`;
 
-    item.innerHTML = `
+    const itemHTML = `
         <div class="feed-type">${typeLabel}</div>
         <div class="feed-location">${point.data.city}, ${point.data.country}</div>
         <div class="feed-detail">${point.data.ip} - ${detail}</div>
         <div class="feed-time">${new Date().toLocaleTimeString()}</div>
     `;
 
-    feedList.insertBefore(item, feedList.firstChild);
-    while (feedList.children.length > 50) feedList.removeChild(feedList.lastChild);
+    // Add to both desktop and mobile feed lists
+    const feedLists = [
+        document.getElementById('feedList'),
+        document.getElementById('mobileFeedList')
+    ];
+
+    feedLists.forEach(feedList => {
+        if (!feedList) return;
+
+        const empty = feedList.querySelector('.feed-empty');
+        if (empty) empty.remove();
+
+        const item = document.createElement('div');
+        item.className = `feed-item ${point.type === 'attacker' ? 'attacker' : ''}`;
+        item.innerHTML = itemHTML;
+
+        feedList.insertBefore(item, feedList.firstChild);
+        while (feedList.children.length > 50) feedList.removeChild(feedList.lastChild);
+    });
+
+    // Update mobile badge
+    updateMobileBadge();
+}
+
+function updateMobileBadge() {
+    const badge = document.getElementById('mobileBadge');
+    if (badge) {
+        const total = totalInfra + totalAttackers;
+        badge.textContent = total > 99 ? '99+' : total;
+    }
 }
 
 function setStatus(message, connected) {
@@ -472,6 +500,68 @@ function setupControls() {
     document.getElementById('resetView').addEventListener('click', () => {
         globe.pointOfView({ lat: 30, lng: 0, altitude: 2.2 }, 1000);
     });
+
+    // Mobile bottom sheet controls
+    setupMobileSheet();
+}
+
+function setupMobileSheet() {
+    const toggle = document.getElementById('mobileToggle');
+    const sheet = document.getElementById('mobileSheet');
+    const overlay = document.getElementById('sheetOverlay');
+    const handle = document.getElementById('sheetHandle');
+
+    if (!toggle || !sheet) return;
+
+    function openSheet() {
+        sheet.classList.add('open');
+        overlay.classList.add('active');
+        toggle.classList.add('open');
+    }
+
+    function closeSheet() {
+        sheet.classList.remove('open');
+        overlay.classList.remove('active');
+        toggle.classList.remove('open');
+    }
+
+    function toggleSheet() {
+        if (sheet.classList.contains('open')) {
+            closeSheet();
+        } else {
+            openSheet();
+        }
+    }
+
+    toggle.addEventListener('click', toggleSheet);
+    overlay.addEventListener('click', closeSheet);
+    handle.addEventListener('click', closeSheet);
+
+    // Swipe down to close
+    let startY = 0;
+    let currentY = 0;
+
+    handle.addEventListener('touchstart', (e) => {
+        startY = e.touches[0].clientY;
+    }, { passive: true });
+
+    handle.addEventListener('touchmove', (e) => {
+        currentY = e.touches[0].clientY;
+        const diff = currentY - startY;
+        if (diff > 0) {
+            sheet.style.transform = `translateY(${diff}px)`;
+        }
+    }, { passive: true });
+
+    handle.addEventListener('touchend', () => {
+        const diff = currentY - startY;
+        sheet.style.transform = '';
+        if (diff > 80) {
+            closeSheet();
+        }
+        startY = 0;
+        currentY = 0;
+    });
 }
 
 function sleep(ms) {
@@ -510,9 +600,12 @@ async function init() {
         totalReports = 0;
         countryStats.clear();
 
-        // Clear feed
+        // Clear feeds (desktop and mobile)
         const feedList = document.getElementById('feedList');
+        const mobileFeedList = document.getElementById('mobileFeedList');
         feedList.innerHTML = '<div class="feed-empty">Refreshing...</div>';
+        if (mobileFeedList) mobileFeedList.innerHTML = '<div class="feed-empty">Refreshing...</div>';
+        updateMobileBadge();
 
         // Fetch fresh data
         await fetchAllData();
