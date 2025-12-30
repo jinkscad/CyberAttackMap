@@ -2,6 +2,9 @@
 
 A real-time 3D globe visualization of cyber threats using real threat intelligence data. No simulations - only real data from security research organizations.
 
+# Live Demo
+ https://jinkscad.github.io/CyberAttackMap/
+
 ## Features
 
 - **3D Interactive Globe** - Night earth visualization showing city lights, with atmosphere effects, built with Globe.gl and Three.js
