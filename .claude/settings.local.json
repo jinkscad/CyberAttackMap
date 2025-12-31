@@ -10,7 +10,12 @@
       "Bash(lsof:*)",
       "Bash(open http://localhost:8000)",
       "Bash(git commit -m \"$\\(cat <<''EOF''\nAdd About page with threat glossary and improve globe\n\n- Add dedicated About page explaining all terminology\n  - C2/Malware Infrastructure definitions\n  - Active Attacker explanations\n  - Data sources documentation\n- Add About button to controls panel\n- Switch to night earth texture with city lights\n- Add country borders overlay\n- Update README with new features\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
-      "Bash(git push)"
+      "Bash(git push)",
+      "Bash(git pull:*)",
+      "Bash(git stash:*)",
+      "WebFetch(domain:urlhaus.abuse.ch)",
+      "WebFetch(domain:sslbl.abuse.ch)",
+      "WebFetch(domain:urlhaus-api.abuse.ch)"
     ]
   }
 }

@@ -1,30 +1,39 @@
 // ============================================
 // GLOBAL THREAT INTELLIGENCE
 // Real data only - no simulations
+// Powered by Mapbox GL JS
 // ============================================
 
-let globe;
+// !! IMPORTANT: Add your Mapbox token here !!
+// Get a free token at: https://account.mapbox.com/auth/signup/
+mapboxgl.accessToken = 'pk.eyJ1Ijoiamlua3NzIiwiYSI6ImNtanRlaHc0djR6YW4zZXB1YzhmdGRtZXoifQ.0lPLh02JMh-mFNSRucuWTA';
+
+let map;
 let isRotating = true;
+let rotationAnimation;
+let markers = [];
 
 // Data stores
 const threatPoints = [];
 const attackerPoints = [];
+const phishingPoints = [];
+const sslPoints = [];
 const countryStats = new Map();
 const geoCache = new Map();
 
 // Stats
 let totalInfra = 0;
 let totalAttackers = 0;
+let totalPhishing = 0;
+let totalSSL = 0;
 let totalReports = 0;
 
 // Colors
 const COLORS = {
     infrastructure: '#ef4444',
     attacker: '#f97316',
-    glow: {
-        infra: 'rgba(239, 68, 68, 0.6)',
-        attacker: 'rgba(249, 115, 22, 0.6)'
-    }
+    phishing: '#06b6d4',
+    ssl: '#eab308'
 };
 
 // API endpoints
@@ -32,116 +41,121 @@ const API = {
     CORS_PROXY: 'https://api.allorigins.win/raw?url=',
     FEODO_TEXT: 'https://feodotracker.abuse.ch/downloads/ipblocklist.txt',
     THREATFOX: 'https://threatfox.abuse.ch/export/json/recent/',
+    URLHAUS: 'https://urlhaus.abuse.ch/downloads/text_recent/',
+    CINS_ARMY: 'https://cinsscore.com/list/ci-badguys.txt',
     DSHIELD_TOP: 'https://isc.sans.edu/api/topips/records/50?json',
-    UPDATE_INTERVAL: 120000,
-    GEO_DELAY: 400  // Faster loading
+    BLOCKLIST_DE: 'https://lists.blocklist.de/lists/all.txt',
+    UPDATE_INTERVAL: 600000,
+    GEO_DELAY: 350
 };
 
 // ============================================
-// GLOBE INITIALIZATION
+// MAPBOX GLOBE INITIALIZATION
 // ============================================
 
-// Major world cities for labels
-const MAJOR_CITIES = [
-    // North America
-    { name: 'New York', lat: 40.7128, lng: -74.0060 },
-    { name: 'Los Angeles', lat: 34.0522, lng: -118.2437 },
-    { name: 'Chicago', lat: 41.8781, lng: -87.6298 },
-    { name: 'Houston', lat: 29.7604, lng: -95.3698 },
-    { name: 'Phoenix', lat: 33.4484, lng: -112.0740 },
-    { name: 'Dallas', lat: 32.7767, lng: -96.7970 },
-    { name: 'San Francisco', lat: 37.7749, lng: -122.4194 },
-    { name: 'Seattle', lat: 47.6062, lng: -122.3321 },
-    { name: 'Denver', lat: 39.7392, lng: -104.9903 },
-    { name: 'Atlanta', lat: 33.7490, lng: -84.3880 },
-    { name: 'Miami', lat: 25.7617, lng: -80.1918 },
-    { name: 'Boston', lat: 42.3601, lng: -71.0589 },
-    { name: 'Washington DC', lat: 38.9072, lng: -77.0369 },
-    { name: 'Las Vegas', lat: 36.1699, lng: -115.1398 },
-    { name: 'Toronto', lat: 43.6532, lng: -79.3832 },
-    { name: 'Vancouver', lat: 49.2827, lng: -123.1207 },
-    { name: 'Montreal', lat: 45.5017, lng: -73.5673 },
-    { name: 'Mexico City', lat: 19.4326, lng: -99.1332 },
-    // Europe
-    { name: 'London', lat: 51.5074, lng: -0.1278 },
-    { name: 'Paris', lat: 48.8566, lng: 2.3522 },
-    { name: 'Berlin', lat: 52.5200, lng: 13.4050 },
-    { name: 'Moscow', lat: 55.7558, lng: 37.6173 },
-    { name: 'Amsterdam', lat: 52.3676, lng: 4.9041 },
-    { name: 'Frankfurt', lat: 50.1109, lng: 8.6821 },
-    { name: 'Madrid', lat: 40.4168, lng: -3.7038 },
-    { name: 'Rome', lat: 41.9028, lng: 12.4964 },
-    { name: 'Istanbul', lat: 41.0082, lng: 28.9784 },
-    // Asia
-    { name: 'Tokyo', lat: 35.6762, lng: 139.6503 },
-    { name: 'Beijing', lat: 39.9042, lng: 116.4074 },
-    { name: 'Shanghai', lat: 31.2304, lng: 121.4737 },
-    { name: 'Seoul', lat: 37.5665, lng: 126.9780 },
-    { name: 'Hong Kong', lat: 22.3193, lng: 114.1694 },
-    { name: 'Singapore', lat: 1.3521, lng: 103.8198 },
-    { name: 'Dubai', lat: 25.2048, lng: 55.2708 },
-    { name: 'Mumbai', lat: 19.0760, lng: 72.8777 },
-    { name: 'Bangkok', lat: 13.7563, lng: 100.5018 },
-    { name: 'Jakarta', lat: -6.2088, lng: 106.8456 },
-    // Other
-    { name: 'Sydney', lat: -33.8688, lng: 151.2093 },
-    { name: 'Sao Paulo', lat: -23.5505, lng: -46.6333 },
-    { name: 'Cairo', lat: 30.0444, lng: 31.2357 },
-    { name: 'Lagos', lat: 6.5244, lng: 3.3792 },
-    { name: 'Johannesburg', lat: -26.2041, lng: 28.0473 },
-];
-
 function initGlobe() {
-    const container = document.getElementById('globe');
+    // Check for token
+    if (mapboxgl.accessToken === 'YOUR_MAPBOX_TOKEN_HERE') {
+        document.getElementById('globe').innerHTML = `
+            <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:#fff;text-align:center;padding:40px;">
+                <h2 style="margin-bottom:16px;">Mapbox Token Required</h2>
+                <p style="color:rgba(255,255,255,0.6);margin-bottom:24px;max-width:400px;">
+                    To use the satellite globe, you need a free Mapbox access token.
+                </p>
+                <ol style="text-align:left;color:rgba(255,255,255,0.6);margin-bottom:24px;">
+                    <li>Go to <a href="https://account.mapbox.com/auth/signup/" target="_blank" style="color:#3b82f6;">mapbox.com/signup</a></li>
+                    <li>Create a free account</li>
+                    <li>Copy your public token</li>
+                    <li>Paste it in app.js line 10</li>
+                </ol>
+                <p style="color:rgba(255,255,255,0.4);font-size:12px;">Free tier: 50,000 map loads/month</p>
+            </div>
+        `;
+        setStatus('Mapbox token required - see instructions', false);
+        return false;
+    }
 
-    globe = Globe()
-        // Night earth with city lights
-        .globeImageUrl('//unpkg.com/three-globe/example/img/earth-night.jpg')
-        .bumpImageUrl('//unpkg.com/three-globe/example/img/earth-topology.png')
-        .backgroundImageUrl('//unpkg.com/three-globe/example/img/night-sky.png')
-        .showAtmosphere(true)
-        .atmosphereColor('#4f46e5')
-        .atmosphereAltitude(0.15)
-        // Country polygons with borders
-        .polygonsData([])
-        .polygonCapColor(() => 'rgba(30, 30, 60, 0.3)')
-        .polygonSideColor(() => 'rgba(100, 100, 255, 0.1)')
-        .polygonStrokeColor(() => 'rgba(100, 150, 255, 0.6)')
-        .polygonAltitude(0.006)
-        // Threat points
-        .htmlElementsData([])
-        .htmlElement(d => {
-            const el = document.createElement('div');
-            el.style.cssText = `
-                width: ${d.size}px;
-                height: ${d.size}px;
-                border-radius: 50%;
-                background: ${d.color};
-                box-shadow: 0 0 ${d.size * 2}px ${d.glow}, 0 0 ${d.size * 4}px ${d.glow};
-                pointer-events: none;
-            `;
-            return el;
-        })
-        .htmlAltitude(0.01)
-        // Ring animations
-        .ringsData([])
-        .ringColor(() => t => `rgba(239, 68, 68, ${1 - t})`)
-        .ringMaxRadius(4)
-        .ringPropagationSpeed(3)
-        .ringRepeatPeriod(800)
-        (container);
+    map = new mapboxgl.Map({
+        container: 'globe',
+        style: 'mapbox://styles/mapbox/satellite-streets-v12',
+        center: [0, 20],
+        zoom: 1.5,
+        projection: 'globe',
+        antialias: true
+    });
 
-    globe.pointOfView({ lat: 30, lng: 0, altitude: 2.2 });
-    globe.controls().autoRotate = true;
-    globe.controls().autoRotateSpeed = 0.4;
-    globe.controls().minDistance = 120; // Allow closer zoom
+    map.on('style.load', () => {
+        // Add atmosphere and fog for realistic globe effect
+        map.setFog({
+            color: 'rgb(20, 20, 30)',
+            'high-color': 'rgb(40, 50, 80)',
+            'horizon-blend': 0.1,
+            'space-color': 'rgb(10, 10, 20)',
+            'star-intensity': 0.8
+        });
 
-    const resize = () => {
-        globe.width(container.clientWidth);
-        globe.height(container.clientHeight);
-    };
-    window.addEventListener('resize', resize);
-    resize();
+        // Add 3D terrain
+        map.addSource('mapbox-dem', {
+            type: 'raster-dem',
+            url: 'mapbox://mapbox.mapbox-terrain-dem-v1',
+            tileSize: 512,
+            maxzoom: 14
+        });
+        map.setTerrain({ source: 'mapbox-dem', exaggeration: 1.5 });
+
+        // Start rotation
+        startRotation();
+    });
+
+    // Disable some default controls for cleaner look
+    map.dragRotate.enable();
+    map.touchZoomRotate.enable();
+
+    return true;
+}
+
+function startRotation() {
+    if (rotationAnimation) cancelAnimationFrame(rotationAnimation);
+
+    function rotate() {
+        if (!isRotating || !map) return;
+
+        const center = map.getCenter();
+        center.lng += 0.02;
+        map.setCenter(center);
+
+        rotationAnimation = requestAnimationFrame(rotate);
+    }
+
+    rotate();
+}
+
+function stopRotation() {
+    if (rotationAnimation) {
+        cancelAnimationFrame(rotationAnimation);
+        rotationAnimation = null;
+    }
+}
+
+// Pause rotation on user interaction
+function setupInteractionHandlers() {
+    if (!map) return;
+
+    map.on('mousedown', () => {
+        if (isRotating) stopRotation();
+    });
+
+    map.on('mouseup', () => {
+        if (isRotating) startRotation();
+    });
+
+    map.on('touchstart', () => {
+        if (isRotating) stopRotation();
+    });
+
+    map.on('touchend', () => {
+        if (isRotating) startRotation();
+    });
 }
 
 // ============================================
@@ -164,14 +178,12 @@ async function geolocateIP(ip) {
         return geoCache.get(ip);
     }
 
-    // Skip private IPs
     if (ip.startsWith('192.168.') || ip.startsWith('10.') ||
         ip.startsWith('172.16.') || ip.startsWith('127.') ||
         ip.startsWith('0.') || ip.startsWith('255.')) {
         return null;
     }
 
-    // Try ipapi.co first (HTTPS, good CORS)
     try {
         const response = await fetch(`https://ipapi.co/${ip}/json/`);
         const data = await response.json();
@@ -191,7 +203,6 @@ async function geolocateIP(ip) {
         console.warn(`ipapi.co failed for ${ip}:`, e.message);
     }
 
-    // Fallback to ip-api.com via proxy
     try {
         const url = `http://ip-api.com/json/${ip}?fields=status,country,city,lat,lon`;
         const text = await fetchViaProxy(url);
@@ -205,7 +216,6 @@ async function geolocateIP(ip) {
                 country: data.country || 'Unknown'
             };
             geoCache.set(ip, result);
-            console.log(`Geolocated ${ip} via proxy: ${result.city}, ${result.country}`);
             return result;
         }
     } catch (e) {
@@ -224,11 +234,8 @@ async function fetchThreatInfrastructure() {
     setStatus('Fetching threat infrastructure...', false);
     const threats = [];
 
-    // Feodo Tracker
     try {
         const text = await fetchViaProxy(API.FEODO_TEXT);
-        console.log('Feodo response length:', text.length);
-
         const lines = text.split('\n');
         for (const line of lines) {
             if (!line.trim() || line.startsWith('#')) continue;
@@ -246,7 +253,6 @@ async function fetchThreatInfrastructure() {
         console.error('Feodo fetch failed:', e);
     }
 
-    // ThreatFox
     try {
         const text = await fetchViaProxy(API.THREATFOX);
         const data = JSON.parse(text);
@@ -266,7 +272,6 @@ async function fetchThreatInfrastructure() {
                     added++;
                 }
             }
-            console.log('ThreatFox threats added:', added);
         }
     } catch (e) {
         console.error('ThreatFox fetch failed:', e);
@@ -296,79 +301,266 @@ async function fetchActiveAttackers() {
                     totalReports += parseInt(item.reports) || 0;
                 }
             }
-            console.log('DShield attackers found:', attackers.length);
         }
     } catch (e) {
         console.error('DShield fetch failed:', e);
     }
 
+    try {
+        const text = await fetchViaProxy(API.BLOCKLIST_DE);
+        const lines = text.split('\n');
+        let added = 0;
+        for (const line of lines) {
+            if (added >= 30) break;
+            const ip = line.trim();
+            if (ip && /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(ip)) {
+                attackers.push({
+                    ip: ip,
+                    reports: 1,
+                    targets: 1,
+                    source: 'Blocklist.de'
+                });
+                added++;
+            }
+        }
+    } catch (e) {
+        console.error('Blocklist.de fetch failed:', e);
+    }
+
     return attackers;
 }
 
+async function fetchMaliciousURLs() {
+    console.log('Fetching malicious URLs...');
+    setStatus('Fetching malicious URLs...', false);
+    const urls = [];
+
+    try {
+        const text = await fetchViaProxy(API.URLHAUS);
+        const lines = text.split('\n');
+        let added = 0;
+
+        for (const line of lines) {
+            if (added >= 25) break;
+            const urlStr = line.trim();
+            if (!urlStr || urlStr.startsWith('#')) continue;
+
+            // Extract IP from URL
+            const ipMatch = urlStr.match(/(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})/);
+            if (ipMatch) {
+                urls.push({
+                    ip: ipMatch[1],
+                    type: 'Malicious URL',
+                    url: urlStr.substring(0, 50),
+                    source: 'URLhaus'
+                });
+                added++;
+            }
+        }
+        console.log('URLhaus threats found:', urls.length);
+    } catch (e) {
+        console.error('URLhaus fetch failed:', e);
+    }
+
+    return urls;
+}
+
+async function fetchSuspiciousIPs() {
+    console.log('Fetching suspicious IPs...');
+    setStatus('Fetching suspicious IPs...', false);
+    const threats = [];
+
+    try {
+        const text = await fetchViaProxy(API.CINS_ARMY);
+        const lines = text.split('\n');
+        let added = 0;
+
+        for (const line of lines) {
+            if (added >= 25) break;
+            const ip = line.trim();
+            // Skip comments and empty lines
+            if (!ip || ip.startsWith('#')) continue;
+
+            // Validate IP format
+            if (/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(ip)) {
+                threats.push({
+                    ip: ip,
+                    type: 'Suspicious IP',
+                    reason: 'Known Bad Actor',
+                    source: 'CINS Army'
+                });
+                added++;
+            }
+        }
+        console.log('CINS Army threats found:', threats.length);
+    } catch (e) {
+        console.error('CINS Army fetch failed:', e);
+    }
+
+    return threats;
+}
+
 // ============================================
-// POINT MANAGEMENT
+// MARKER MANAGEMENT
 // ============================================
+
+function createMarkerElement(color, size) {
+    // Create outer container with larger click area
+    const container = document.createElement('div');
+    container.className = 'threat-marker-container';
+    container.style.cssText = `
+        width: ${size + 20}px;
+        height: ${size + 20}px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+    `;
+
+    // Inner visible dot
+    const dot = document.createElement('div');
+    dot.className = 'threat-marker';
+    dot.style.cssText = `
+        width: ${size}px;
+        height: ${size}px;
+        border-radius: 50%;
+        background: ${color};
+        box-shadow: 0 0 ${size}px ${color}, 0 0 ${size * 2}px ${color};
+        border: 2px solid rgba(255,255,255,0.4);
+        pointer-events: none;
+    `;
+
+    container.appendChild(dot);
+    return container;
+}
+
+function getPopupHTML(data, type) {
+    let typeLabel;
+    switch (type) {
+        case 'infra': typeLabel = data.type || 'C2 Server'; break;
+        case 'attacker': typeLabel = 'Active Attacker'; break;
+        case 'phishing': typeLabel = 'Malicious URL'; break;
+        case 'ssl': typeLabel = 'Suspicious IP'; break;
+        default: typeLabel = 'Threat';
+    }
+
+    let detail = '';
+    if (type === 'infra') detail = data.malware || data.source;
+    else if (type === 'attacker') detail = `${formatNumber(data.reports)} reports`;
+    else if (type === 'phishing') detail = data.url || data.source;
+    else if (type === 'ssl') detail = data.reason || data.source;
+
+    return `
+        <div class="popup-content">
+            <div class="popup-type ${type}">${typeLabel}</div>
+            <div class="popup-location">${data.city}, ${data.country}</div>
+            <div class="popup-ip">${data.ip}</div>
+            <div class="popup-detail">${detail}</div>
+        </div>
+    `;
+}
+
+function addMarker(lat, lon, color, size, data, type) {
+    if (!map) return;
+
+    const el = createMarkerElement(color, size);
+
+    // Create popup
+    const popup = new mapboxgl.Popup({
+        offset: 15,
+        closeButton: true,
+        closeOnClick: true,
+        maxWidth: '250px'
+    }).setHTML(getPopupHTML(data, type));
+
+    const marker = new mapboxgl.Marker({
+        element: el,
+        anchor: 'center'
+    })
+        .setLngLat([lon, lat])
+        .setPopup(popup)
+        .addTo(map);
+
+    markers.push({ marker, lat, lon, data, type });
+
+    
+    return marker;
+}
+
+function flyToLocation(lat, lon) {
+    if (!map) return;
+    map.flyTo({
+        center: [lon, lat],
+        zoom: 5,
+        duration: 1500
+    });
+}
+
+function clearMarkers() {
+    markers.forEach(m => m.marker.remove());
+    markers = [];
+}
 
 async function processThreats(threats, type) {
     console.log(`Processing ${threats.length} ${type} threats...`);
     let processed = 0;
 
+    const colorMap = {
+        infra: COLORS.infrastructure,
+        attacker: COLORS.attacker,
+        phishing: COLORS.phishing,
+        ssl: COLORS.ssl
+    };
+
     for (const threat of threats) {
         const geo = await geolocateIP(threat.ip);
 
         if (geo) {
+            const color = colorMap[type] || colorMap.infra;
+            const size = type === 'attacker' ? Math.min(18, 12 + (threat.reports || 0) / 50000) : 14;
+
             const point = {
                 lat: geo.lat,
                 lng: geo.lon,
                 type: type,
-                color: type === 'infra' ? COLORS.infrastructure : COLORS.attacker,
-                glow: type === 'infra' ? COLORS.glow.infra : COLORS.glow.attacker,
-                size: type === 'infra' ? 6 : Math.min(10, 4 + (threat.reports || 0) / 50000),
                 data: { ip: threat.ip, city: geo.city, country: geo.country, ...threat }
             };
 
-            if (type === 'infra') {
-                threatPoints.push(point);
-                totalInfra++;
-            } else {
-                attackerPoints.push(point);
-                totalAttackers++;
+            addMarker(geo.lat, geo.lon, color, size, point.data, type);
+
+            switch (type) {
+                case 'infra':
+                    threatPoints.push(point);
+                    totalInfra++;
+                    break;
+                case 'attacker':
+                    attackerPoints.push(point);
+                    totalAttackers++;
+                    break;
+                case 'phishing':
+                    phishingPoints.push(point);
+                    totalPhishing++;
+                    break;
+                case 'ssl':
+                    sslPoints.push(point);
+                    totalSSL++;
+                    break;
             }
 
             countryStats.set(geo.country, (countryStats.get(geo.country) || 0) + 1);
 
             addToFeed(point);
-            addRing(geo.lat, geo.lon);
-            updateGlobe();
             updateStats();
 
             processed++;
             setStatus(`Processing: ${processed} points loaded`, false);
         }
 
-        // Rate limit for geolocation API
         await sleep(API.GEO_DELAY);
     }
 
     console.log(`Processed ${processed} ${type} points`);
     return processed;
-}
-
-function updateGlobe() {
-    globe.htmlElementsData([...threatPoints, ...attackerPoints]);
-}
-
-function addRing(lat, lng) {
-    const rings = globe.ringsData();
-    const ring = { lat, lng };
-    rings.push(ring);
-    globe.ringsData(rings);
-
-    setTimeout(() => {
-        const idx = rings.indexOf(ring);
-        if (idx > -1) rings.splice(idx, 1);
-        globe.ringsData([...rings]);
-    }, 2500);
 }
 
 // ============================================
@@ -378,8 +570,9 @@ function addRing(lat, lng) {
 function updateStats() {
     document.getElementById('threatInfraCount').textContent = totalInfra;
     document.getElementById('activeAttackers').textContent = totalAttackers;
+    document.getElementById('phishingCount').textContent = totalPhishing;
+    document.getElementById('sslCount').textContent = totalSSL;
     document.getElementById('countriesCount').textContent = countryStats.size;
-    document.getElementById('lastHourAttacks').textContent = formatNumber(totalReports);
     updateCountryList();
 }
 
@@ -400,7 +593,6 @@ function updateCountryList() {
             </div>
         `).join('');
 
-    // Update both desktop and mobile
     const desktop = document.getElementById('countryList');
     const mobile = document.getElementById('mobileCountryList');
     if (desktop) desktop.innerHTML = html;
@@ -408,10 +600,28 @@ function updateCountryList() {
 }
 
 function addToFeed(point) {
-    const typeLabel = point.type === 'infra' ? point.data.type : 'Active Attacker';
-    const detail = point.type === 'infra'
-        ? (point.data.malware || point.data.source)
-        : `${formatNumber(point.data.reports)} reports`;
+    let typeLabel, detail;
+    switch (point.type) {
+        case 'infra':
+            typeLabel = point.data.type || 'C2 Server';
+            detail = point.data.malware || point.data.source;
+            break;
+        case 'attacker':
+            typeLabel = 'Active Attacker';
+            detail = `${formatNumber(point.data.reports)} reports`;
+            break;
+        case 'phishing':
+            typeLabel = 'Malicious URL';
+            detail = point.data.url || point.data.source;
+            break;
+        case 'ssl':
+            typeLabel = 'Suspicious IP';
+            detail = point.data.reason || point.data.source;
+            break;
+        default:
+            typeLabel = 'Threat';
+            detail = point.data.source;
+    }
 
     const itemHTML = `
         <div class="feed-type">${typeLabel}</div>
@@ -420,7 +630,6 @@ function addToFeed(point) {
         <div class="feed-time">${new Date().toLocaleTimeString()}</div>
     `;
 
-    // Add to both desktop and mobile feed lists
     const feedLists = [
         document.getElementById('feedList'),
         document.getElementById('mobileFeedList')
@@ -433,30 +642,53 @@ function addToFeed(point) {
         if (empty) empty.remove();
 
         const item = document.createElement('div');
-        item.className = `feed-item ${point.type === 'attacker' ? 'attacker' : ''}`;
+        item.className = `feed-item ${point.type}`;
         item.innerHTML = itemHTML;
+
+        // Click to fly to location
+        item.addEventListener('click', () => {
+            flyToLocation(point.lat, point.lng);
+
+            // Find and open the marker popup
+            const markerData = markers.find(m =>
+                m.lat === point.lat && m.lon === point.lng
+            );
+            if (markerData) {
+                markerData.marker.togglePopup();
+            }
+
+            // Close mobile sheet if open
+            const mobileSheet = document.getElementById('mobileSheet');
+            if (mobileSheet && mobileSheet.classList.contains('open')) {
+                mobileSheet.classList.remove('open');
+                document.getElementById('sheetOverlay').classList.remove('active');
+                document.getElementById('mobileToggle').classList.remove('open');
+            }
+        });
 
         feedList.insertBefore(item, feedList.firstChild);
         while (feedList.children.length > 50) feedList.removeChild(feedList.lastChild);
     });
 
-    // Update mobile badge
     updateMobileBadge();
 }
 
 function updateMobileBadge() {
     const badge = document.getElementById('mobileBadge');
     if (badge) {
-        const total = totalInfra + totalAttackers;
+        const total = totalInfra + totalAttackers + totalPhishing + totalSSL;
         badge.textContent = total > 99 ? '99+' : total;
     }
 }
 
 function setStatus(message, connected) {
-    document.getElementById('statusDot').className = 'status-dot' + (connected ? ' connected' : '');
-    document.getElementById('statusText').textContent = message;
+    const statusDot = document.getElementById('statusDot');
+    const statusText = document.getElementById('statusText');
+    if (statusDot) statusDot.className = 'status-dot' + (connected ? ' connected' : '');
+    if (statusText) statusText.textContent = message;
     if (connected) {
-        document.getElementById('updateTime').textContent = `Updated ${new Date().toLocaleTimeString()}`;
+        const updateTime = document.getElementById('updateTime');
+        if (updateTime) updateTime.textContent = `Updated ${new Date().toLocaleTimeString()}`;
     }
 }
 
@@ -470,15 +702,25 @@ async function fetchAllData() {
     try {
         const threats = await fetchThreatInfrastructure();
         if (threats.length > 0) {
-            await processThreats(threats.slice(0, 40), 'infra');
+            await processThreats(threats.slice(0, 35), 'infra');
         }
 
         const attackers = await fetchActiveAttackers();
         if (attackers.length > 0) {
-            await processThreats(attackers.slice(0, 40), 'attacker');
+            await processThreats(attackers.slice(0, 35), 'attacker');
         }
 
-        const total = totalInfra + totalAttackers;
+        const urls = await fetchMaliciousURLs();
+        if (urls.length > 0) {
+            await processThreats(urls.slice(0, 25), 'phishing');
+        }
+
+        const suspicious = await fetchSuspiciousIPs();
+        if (suspicious.length > 0) {
+            await processThreats(suspicious.slice(0, 25), 'ssl');
+        }
+
+        const total = totalInfra + totalAttackers + totalPhishing + totalSSL;
         if (total > 0) {
             setStatus(`Connected - ${total} threats loaded`, true);
         } else {
@@ -493,16 +735,57 @@ async function fetchAllData() {
 function setupControls() {
     document.getElementById('toggleRotation').addEventListener('click', function() {
         isRotating = !isRotating;
-        globe.controls().autoRotate = isRotating;
         this.classList.toggle('active', isRotating);
+        if (isRotating) {
+            startRotation();
+        } else {
+            stopRotation();
+        }
     });
 
     document.getElementById('resetView').addEventListener('click', () => {
-        globe.pointOfView({ lat: 30, lng: 0, altitude: 2.2 }, 1000);
+        if (map) {
+            map.flyTo({
+                center: [0, 20],
+                zoom: 1.5,
+                pitch: 0,
+                bearing: 0,
+                duration: 1500
+            });
+        }
     });
 
-    // Mobile bottom sheet controls
+    // About modal handlers
+    const aboutBtn = document.getElementById('aboutBtn');
+    const aboutModal = document.getElementById('aboutModal');
+    const closeModal = document.getElementById('closeModal');
+
+    if (aboutBtn && aboutModal) {
+        aboutBtn.addEventListener('click', () => {
+            aboutModal.classList.add('active');
+        });
+
+        closeModal.addEventListener('click', () => {
+            aboutModal.classList.remove('active');
+        });
+
+        // Close on overlay click
+        aboutModal.addEventListener('click', (e) => {
+            if (e.target === aboutModal) {
+                aboutModal.classList.remove('active');
+            }
+        });
+
+        // Close on Escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && aboutModal.classList.contains('active')) {
+                aboutModal.classList.remove('active');
+            }
+        });
+    }
+
     setupMobileSheet();
+    setupInteractionHandlers();
 }
 
 function setupMobileSheet() {
@@ -526,20 +809,14 @@ function setupMobileSheet() {
     }
 
     function toggleSheet() {
-        if (sheet.classList.contains('open')) {
-            closeSheet();
-        } else {
-            openSheet();
-        }
+        sheet.classList.contains('open') ? closeSheet() : openSheet();
     }
 
     toggle.addEventListener('click', toggleSheet);
     overlay.addEventListener('click', closeSheet);
     handle.addEventListener('click', closeSheet);
 
-    // Swipe down to close
-    let startY = 0;
-    let currentY = 0;
+    let startY = 0, currentY = 0;
 
     handle.addEventListener('touchstart', (e) => {
         startY = e.touches[0].clientY;
@@ -548,19 +825,14 @@ function setupMobileSheet() {
     handle.addEventListener('touchmove', (e) => {
         currentY = e.touches[0].clientY;
         const diff = currentY - startY;
-        if (diff > 0) {
-            sheet.style.transform = `translateY(${diff}px)`;
-        }
+        if (diff > 0) sheet.style.transform = `translateY(${diff}px)`;
     }, { passive: true });
 
     handle.addEventListener('touchend', () => {
         const diff = currentY - startY;
         sheet.style.transform = '';
-        if (diff > 80) {
-            closeSheet();
-        }
-        startY = 0;
-        currentY = 0;
+        if (diff > 80) closeSheet();
+        startY = currentY = 0;
     });
 }
 
@@ -569,45 +841,44 @@ function sleep(ms) {
 }
 
 async function init() {
-    console.log('Initializing globe...');
-    initGlobe();
+    console.log('Initializing Mapbox globe...');
+
+    const success = initGlobe();
+    if (!success) return;
+
     setupControls();
     document.getElementById('toggleRotation').classList.add('active');
 
-    // Load country borders
-    try {
-        const countriesRes = await fetch('https://unpkg.com/world-atlas@2/countries-110m.json');
-        const countriesData = await countriesRes.json();
-        const countries = topojson.feature(countriesData, countriesData.objects.countries).features;
-        globe.polygonsData(countries);
-        console.log('Country borders loaded');
-    } catch (e) {
-        console.log('Could not load country borders:', e);
-    }
-
-    console.log('Starting data fetch...');
-    await fetchAllData();
+    // Wait for map to load
+    map.on('load', async () => {
+        console.log('Map loaded, starting data fetch...');
+        await fetchAllData();
+    });
 
     // Live updates every 2 minutes
     setInterval(async () => {
+        if (!map) return;
+
         console.log('=== Refreshing data ===');
 
-        // Clear old data
+        clearMarkers();
         threatPoints.length = 0;
         attackerPoints.length = 0;
+        phishingPoints.length = 0;
+        sslPoints.length = 0;
         totalInfra = 0;
         totalAttackers = 0;
+        totalPhishing = 0;
+        totalSSL = 0;
         totalReports = 0;
         countryStats.clear();
 
-        // Clear feeds (desktop and mobile)
         const feedList = document.getElementById('feedList');
         const mobileFeedList = document.getElementById('mobileFeedList');
-        feedList.innerHTML = '<div class="feed-empty">Refreshing...</div>';
+        if (feedList) feedList.innerHTML = '<div class="feed-empty">Refreshing...</div>';
         if (mobileFeedList) mobileFeedList.innerHTML = '<div class="feed-empty">Refreshing...</div>';
         updateMobileBadge();
 
-        // Fetch fresh data
         await fetchAllData();
     }, API.UPDATE_INTERVAL);
 }

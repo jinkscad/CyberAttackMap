@@ -7,6 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link href="https://api.mapbox.com/mapbox-gl-js/v3.0.1/mapbox-gl.css" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -38,19 +39,23 @@
         <div class="stats-bar">
             <div class="stat">
                 <span class="stat-value" id="threatInfraCount">0</span>
-                <span class="stat-label">Threat Infrastructure</span>
+                <span class="stat-label">C2/Malware</span>
             </div>
             <div class="stat">
                 <span class="stat-value" id="activeAttackers">0</span>
-                <span class="stat-label">Active Attackers</span>
+                <span class="stat-label">Attackers</span>
+            </div>
+            <div class="stat">
+                <span class="stat-value" id="phishingCount">0</span>
+                <span class="stat-label">Malicious URLs</span>
+            </div>
+            <div class="stat">
+                <span class="stat-value" id="sslCount">0</span>
+                <span class="stat-label">Suspicious</span>
             </div>
             <div class="stat">
                 <span class="stat-value" id="countriesCount">0</span>
                 <span class="stat-label">Countries</span>
-            </div>
-            <div class="stat">
-                <span class="stat-value" id="lastHourAttacks">0</span>
-                <span class="stat-label">Reports (24h)</span>
             </div>
         </div>
 
@@ -68,11 +73,19 @@
                 <div class="legend">
                     <div class="legend-item">
                         <span class="legend-dot infra"></span>
-                        <span>C2 / Malware Infrastructure</span>
+                        <span>C2 / Malware</span>
                     </div>
                     <div class="legend-item">
                         <span class="legend-dot attacker"></span>
                         <span>Active Attacker</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-dot phishing"></span>
+                        <span>Malicious URL</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-dot ssl"></span>
+                        <span>Suspicious IP</span>
                     </div>
                 </div>
             </div>
@@ -97,12 +110,13 @@
                     <circle cx="12" cy="12" r="3"/>
                 </svg>
             </button>
-            <a href="about.html" class="control-btn" title="About this app">
+            <button class="control-btn" id="aboutBtn" title="About &amp; Glossary">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <circle cx="12" cy="12" r="10"/>
-                    <path d="M12 16v-4M12 8h.01"/>
+                    <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+                    <path d="M12 17h.01"/>
                 </svg>
-            </a>
+            </button>
         </div>
 
         <!-- Mobile Bottom Sheet Toggle -->
@@ -130,11 +144,19 @@
                     <div class="legend">
                         <div class="legend-item">
                             <span class="legend-dot infra"></span>
-                            <span>C2 / Malware Infrastructure</span>
+                            <span>C2 / Malware</span>
                         </div>
                         <div class="legend-item">
                             <span class="legend-dot attacker"></span>
                             <span>Active Attacker</span>
+                        </div>
+                        <div class="legend-item">
+                            <span class="legend-dot phishing"></span>
+                            <span>Malicious URL</span>
+                        </div>
+                        <div class="legend-item">
+                            <span class="legend-dot ssl"></span>
+                            <span>Suspicious IP</span>
                         </div>
                     </div>
                 </div>
@@ -148,15 +170,144 @@
 
         <!-- Data Attribution -->
         <footer class="footer">
-            <span>Data: Abuse.ch &bull; SANS DShield</span>
+            <span>Data: Abuse.ch &bull; SANS DShield &bull; CINS Army &bull; Blocklist.de</span>
             <span id="updateTime">--</span>
         </footer>
 
+        <!-- About Modal -->
+        <div class="modal-overlay" id="aboutModal">
+            <div class="modal-content">
+                <button class="modal-close" id="closeModal">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M18 6L6 18M6 6l12 12"/>
+                    </svg>
+                </button>
+                <div class="modal-body">
+                    <header class="about-header">
+                        <h1>Global Threat Intelligence</h1>
+                        <p>A real-time visualization of global cyber threats, showing active malware infrastructure and attacking IP addresses from verified threat intelligence sources.</p>
+                    </header>
+
+                    <section class="section">
+                        <h2>What is this?</h2>
+                        <p>This application displays a 3D globe visualization of real-world cyber threats detected across the internet. Unlike simulated security dashboards, all data shown here comes from actual threat intelligence feeds that track malicious infrastructure and attack activity worldwide.</p>
+                        <p>The map helps security professionals, researchers, and curious users understand the global distribution of cyber threats and see which regions are most active in terms of malicious infrastructure and attack origins.</p>
+                    </section>
+
+                    <section class="section">
+                        <h2>Terminology</h2>
+                        <div class="term-list">
+                            <div class="term-item">
+                                <div class="term-header">
+                                    <span class="legend-dot infra"></span>
+                                    <h3>C2 / Malware Infrastructure</h3>
+                                </div>
+                                <p><strong>Command and Control (C2) servers</strong> are remote systems that cybercriminals use to communicate with and control compromised computers (often called "bots" or "zombies"). When malware infects a computer, it typically "phones home" to a C2 server to receive instructions, download additional malware, or exfiltrate stolen data.</p>
+                                <p><strong>Malware Infrastructure</strong> broadly refers to all the servers and systems used to support cyber attacks. This includes servers hosting malicious downloads, phishing websites, exploit kits, and distribution networks for malware.</p>
+                                <p>On this map, red dots represent known malicious infrastructure reported by security researchers and automated threat detection systems.</p>
+                            </div>
+                            <div class="term-item">
+                                <div class="term-header">
+                                    <span class="legend-dot attacker"></span>
+                                    <h3>Active Attacker</h3>
+                                </div>
+                                <p>These are IP addresses that have been observed actively conducting malicious activities such as:</p>
+                                <p><strong>Port scanning</strong> - Probing networks to find vulnerable services<br>
+                                <strong>Brute-force attacks</strong> - Attempting to guess passwords through repeated login attempts<br>
+                                <strong>Exploitation attempts</strong> - Trying to exploit known vulnerabilities in software</p>
+                                <p>On this map, orange dots represent IPs that have been reported attacking multiple systems within the last 24 hours. The attack count shown indicates how many malicious connection attempts were observed from each IP.</p>
+                            </div>
+                            <div class="term-item">
+                                <div class="term-header">
+                                    <span class="legend-dot phishing"></span>
+                                    <h3>Malicious URLs</h3>
+                                </div>
+                                <p><strong>Malicious URLs</strong> are web addresses that host harmful content such as phishing pages designed to steal credentials, malware downloads, exploit kits, or fraudulent sites.</p>
+                                <p>On this map, cyan dots represent servers hosting malicious URLs tracked by URLhaus. These may include phishing sites impersonating banks or popular services, drive-by download pages, and malware distribution networks.</p>
+                            </div>
+                            <div class="term-item">
+                                <div class="term-header">
+                                    <span class="legend-dot ssl"></span>
+                                    <h3>Suspicious IPs</h3>
+                                </div>
+                                <p><strong>CINS Army</strong> (Collective Intelligence Network Security) maintains a list of IPs that have been observed engaging in malicious behavior across multiple honeypots and security sensors worldwide.</p>
+                                <p>On this map, yellow dots represent IPs flagged as "bad actors" based on observed malicious activity patterns including scanning, exploitation attempts, and other suspicious behavior.</p>
+                            </div>
+                            <div class="term-item">
+                                <div class="term-header">
+                                    <h3>Additional Terms</h3>
+                                </div>
+                                <p><strong>Botnet</strong> - A network of compromised computers controlled by an attacker, often used for spam, DDoS attacks, or cryptocurrency mining.</p>
+                                <p><strong>IOC (Indicator of Compromise)</strong> - Technical evidence that a system has been breached, such as malicious IP addresses, file hashes, or domain names.</p>
+                                <p><strong>Threat Feed</strong> - A continuous stream of threat intelligence data from security researchers and automated systems.</p>
+                                <p><strong>Phishing</strong> - A social engineering attack where criminals impersonate legitimate entities to steal credentials or personal information.</p>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="section">
+                        <h2>Data Sources</h2>
+                        <div class="source-list">
+                            <div class="source-item">
+                                <h3>Abuse.ch Feodo Tracker</h3>
+                                <p>Tracks botnet C2 servers associated with banking trojans like Dridex, Emotet, and TrickBot. These are some of the most dangerous malware families used for financial fraud.</p>
+                            </div>
+                            <div class="source-item">
+                                <h3>Abuse.ch ThreatFox</h3>
+                                <p>A community-driven platform for sharing IOCs (Indicators of Compromise) including malicious IPs, domains, and file hashes associated with malware campaigns.</p>
+                            </div>
+                            <div class="source-item">
+                                <h3>Abuse.ch URLhaus</h3>
+                                <p>Tracks malicious URLs used for malware distribution. Covers phishing sites, exploit kits, and download locations for various malware families.</p>
+                            </div>
+                            <div class="source-item">
+                                <h3>CINS Army</h3>
+                                <p>Collective Intelligence Network Security maintains a sentinel network of honeypots that identifies IPs engaging in malicious activity across the internet.</p>
+                            </div>
+                            <div class="source-item">
+                                <h3>SANS Internet Storm Center (DShield)</h3>
+                                <p>A distributed sensor network where volunteers share firewall and intrusion detection logs. This data identifies the most active attacking IPs across the internet.</p>
+                            </div>
+                            <div class="source-item">
+                                <h3>Blocklist.de</h3>
+                                <p>Collects and shares IP addresses from fail2ban and other intrusion detection systems. Tracks brute-force attackers targeting SSH, FTP, mail servers, and web applications.</p>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="section">
+                        <h2>Features</h2>
+                        <div class="source-list">
+                            <div class="source-item">
+                                <h3>Real-Time Data</h3>
+                                <p>Data refreshes every 2 minutes from live threat intelligence feeds.</p>
+                            </div>
+                            <div class="source-item">
+                                <h3>3D Globe Visualization</h3>
+                                <p>Interactive globe showing geographic distribution of threats worldwide.</p>
+                            </div>
+                            <div class="source-item">
+                                <h3>Live Threat Feed</h3>
+                                <p>Scrolling feed showing the latest threats as they're detected. Click any entry to fly to its location.</p>
+                            </div>
+                            <div class="source-item">
+                                <h3>Country Statistics</h3>
+                                <p>Breakdown of which countries host the most threat infrastructure.</p>
+                            </div>
+                        </div>
+                    </section>
+
+                    <div class="disclaimer">
+                        <h3>Disclaimer</h3>
+                        <p>This tool is for educational and research purposes only. The data shown represents a sample of known threats and is not comprehensive. IP addresses can be spoofed, compromised devices may belong to innocent users, and geolocation is approximate. Do not use this data to make accusations or take action against specific IP addresses without proper investigation.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
     </div>
 
-    <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
-    <script src="https://unpkg.com/globe.gl@2.27.0/dist/globe.gl.min.js"></script>
-    <script src="https://unpkg.com/topojson-client@3"></script>
+    <script src="https://api.mapbox.com/mapbox-gl-js/v3.0.1/mapbox-gl.js"></script>
     <script src="app.js"></script>
 </body>
 </html>

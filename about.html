@@ -255,10 +255,30 @@
 
                 <div class="term-item">
                     <div class="term-header">
-                        <h3>Threat Infrastructure vs Active Attackers</h3>
+                        <span class="legend-dot phishing"></span>
+                        <h3>Malicious URLs</h3>
                     </div>
-                    <p><strong>Threat Infrastructure (red)</strong> represents the "supply side" of cybercrime - the servers and systems criminals have set up to conduct attacks, host malware, or control botnets.</p>
-                    <p><strong>Active Attackers (orange)</strong> represents the "demand side" - systems actively probing and attacking targets right now. These could be compromised machines in a botnet, or systems directly controlled by attackers.</p>
+                    <p><strong>Malicious URLs</strong> are web addresses that host harmful content such as phishing pages designed to steal credentials, malware downloads, exploit kits, or fraudulent sites.</p>
+                    <p>On this map, cyan dots represent servers hosting malicious URLs tracked by URLhaus. These may include phishing sites impersonating banks or popular services, drive-by download pages, and malware distribution networks.</p>
+                </div>
+
+                <div class="term-item">
+                    <div class="term-header">
+                        <span class="legend-dot ssl"></span>
+                        <h3>Suspicious IPs</h3>
+                    </div>
+                    <p><strong>CINS Army</strong> (Collective Intelligence Network Security) maintains a list of IPs that have been observed engaging in malicious behavior across multiple honeypots and security sensors worldwide.</p>
+                    <p>On this map, yellow dots represent IPs flagged as "bad actors" based on observed malicious activity patterns including scanning, exploitation attempts, and other suspicious behavior.</p>
+                </div>
+
+                <div class="term-item">
+                    <div class="term-header">
+                        <h3>Threat Categories</h3>
+                    </div>
+                    <p><strong>C2/Malware Infrastructure (red)</strong> - Command and control servers and malware hosts</p>
+                    <p><strong>Active Attackers (orange)</strong> - Systems actively scanning and attacking targets</p>
+                    <p><strong>Malicious URLs (cyan)</strong> - Phishing and malware distribution sites</p>
+                    <p><strong>Suspicious IPs (yellow)</strong> - Known bad actors from honeypot networks</p>
                 </div>
 
                 <div class="term-item">
@@ -268,6 +288,7 @@
                     <p><strong>Botnet</strong> - A network of compromised computers controlled by an attacker, often used for spam, DDoS attacks, or cryptocurrency mining.</p>
                     <p><strong>IOC (Indicator of Compromise)</strong> - Technical evidence that a system has been breached, such as malicious IP addresses, file hashes, or domain names.</p>
                     <p><strong>Threat Feed</strong> - A continuous stream of threat intelligence data from security researchers and automated systems.</p>
+                    <p><strong>Phishing</strong> - A social engineering attack where criminals impersonate legitimate entities to steal credentials or personal information.</p>
                 </div>
             </div>
         </section>
@@ -286,9 +307,24 @@
                     <p><a href="https://threatfox.abuse.ch/" target="_blank">threatfox.abuse.ch</a></p>
                 </div>
                 <div class="source-item">
+                    <h3>Abuse.ch URLhaus</h3>
+                    <p>Tracks malicious URLs used for malware distribution. Covers phishing sites, exploit kits, and download locations for various malware families.</p>
+                    <p><a href="https://urlhaus.abuse.ch/" target="_blank">urlhaus.abuse.ch</a></p>
+                </div>
+                <div class="source-item">
+                    <h3>CINS Army</h3>
+                    <p>Collective Intelligence Network Security maintains a sentinel network of honeypots that identifies IPs engaging in malicious activity across the internet.</p>
+                    <p><a href="https://cinsscore.com/" target="_blank">cinsscore.com</a></p>
+                </div>
+                <div class="source-item">
                     <h3>SANS Internet Storm Center (DShield)</h3>
                     <p>A distributed sensor network where volunteers share firewall and intrusion detection logs. This data identifies the most active attacking IPs across the internet.</p>
                     <p><a href="https://isc.sans.edu/" target="_blank">isc.sans.edu</a></p>
+                </div>
+                <div class="source-item">
+                    <h3>Blocklist.de</h3>
+                    <p>Collects and shares IP addresses from fail2ban and other intrusion detection systems. Tracks brute-force attackers targeting SSH, FTP, mail servers, and web applications.</p>
+                    <p><a href="https://www.blocklist.de/" target="_blank">blocklist.de</a></p>
                 </div>
             </div>
         </section>
